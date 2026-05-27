@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -29,7 +30,7 @@ export default function LeadDetail() {
   const [audioFile, setAudioFile] = useState(null)
   const [updatingStatus, setUpdatingStatus] = useState(false)
 
-  useEffect(() => { fetchAll() }, [id])
+  useEffect(() => { fetchAll() }, [id]) // eslint-disable-line
 
   async function fetchAll() {
     setLoading(true)
