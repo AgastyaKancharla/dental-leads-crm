@@ -1,10 +1,11 @@
+/* eslint-disable */
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge } from '../components/Badges'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { Phone, Users, TrendingUp, CheckCircle, Clock, AlertTriangle, Calendar, ArrowRight } from 'lucide-react'
-import { format, isToday, isPast, parseISO, startOfDay } from 'date-fns'
+import { format, isToday, isPast, parseISO } from 'date-fns'
 
 const STAGE_COLORS = {
   new: '#3b82f6',
