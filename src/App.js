@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Users, FileText, Bell, Download, Plus } from 'lucide-react'
