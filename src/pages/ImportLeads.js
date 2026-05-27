@@ -1,14 +1,14 @@
 /* eslint-disable */
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Download, CheckCircle, ArrowRight } from 'lucide-react'
+import { Download, CheckCircle, ArrowRight, Upload } from 'lucide-react'
 
 const COLUMN_OPTIONS = ['', 'clinic_name', 'doctor_name', 'phone', 'area', 'rating', 'notes', 'status', 'skip']
 
 export default function ImportLeads() {
   const [sheetUrl, setSheetUrl] = useState('')
   const [csvText, setCsvText] = useState('')
-  const [step, setStep] = useState(1) // 1: input, 2: map, 3: preview, 4: done
+  const [step, setStep] = useState(1)
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
   const [mapping, setMapping] = useState({})
@@ -24,7 +24,9 @@ export default function ImportLeads() {
       const result = []
       let cur = '', inQ = false
       for (let ch of line) {
-        if (ch === '"') { inQ = !inQ } else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = '' } else { cur += ch }
+        if (ch === '"') { inQ = !inQ }
+        else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = '' }
+        else { cur += ch }
       }
       result.push(cur.trim())
       return result
@@ -34,29 +36,47 @@ export default function ImportLeads() {
     return { headers, rows }
   }
 
+  function extractSheetId(url) {
+    const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
+    return match ? match[1] : null
+  }
+
+  function extractGid(url) {
+    const match = url.match(/gid=(\d+)/)
+    return match ? match[1] : '0'
+  }
+
   async function fetchSheet() {
-    if (!sheetUrl && !csvText) { setError('Enter a Google Sheet URL or paste CSV data'); return }
+    if (!sheetUrl && !csvText) { setError('Enter a Google Sheet URL or paste CSV/Excel data'); return }
     setFetching(true)
     setError('')
 
     try {
       let text = csvText
+
       if (sheetUrl && !csvText) {
-        // Convert Google Sheets URL to CSV export URL
-        let csvUrl = sheetUrl
-        if (sheetUrl.includes('/edit')) {
-          csvUrl = sheetUrl.replace('/edit', '/export?format=csv&')
-        } else if (sheetUrl.includes('spreadsheets/d/')) {
-          const match = sheetUrl.match(/spreadsheets\/d\/([^/]+)/)
-          if (match) csvUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`
+        const sheetId = extractSheetId(sheetUrl)
+        if (!sheetId) throw new Error('Invalid Google Sheet URL. Make sure to copy the full URL from your browser.')
+        
+        const gid = extractGid(sheetUrl)
+        // Use a CORS proxy to bypass browser restrictions
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`
+
+        let resp = await fetch(proxyUrl)
+        if (!resp.ok) {
+          // Try direct as fallback
+          resp = await fetch(csvUrl)
+          if (!resp.ok) throw new Error('Could not fetch sheet. Make sure it is set to "Anyone with the link can view"')
         }
-        const resp = await fetch(csvUrl)
-        if (!resp.ok) throw new Error('Could not fetch sheet. Make sure it is publicly shared.')
         text = await resp.text()
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          throw new Error('Sheet is not publicly shared. Go to Share → Anyone with the link → Viewer')
+        }
       }
 
       const { headers, rows } = parseCSV(text)
-      if (!headers.length) throw new Error('Could not parse data. Check your sheet has headers in row 1.')
+      if (!headers.length) throw new Error('Could not parse data. Make sure your sheet has headers in row 1.')
 
       setHeaders(headers)
       setRows(rows)
@@ -64,13 +84,13 @@ export default function ImportLeads() {
       // Auto-map common column names
       const autoMap = {}
       headers.forEach((h, i) => {
-        const lower = h.toLowerCase().replace(/\s/g, '_')
-        if (lower.includes('clinic') || lower.includes('hospital')) autoMap[i] = 'clinic_name'
-        else if (lower.includes('doctor') || lower.includes('dr') || lower.includes('name')) autoMap[i] = 'doctor_name'
-        else if (lower.includes('phone') || lower.includes('mobile') || lower.includes('contact')) autoMap[i] = 'phone'
-        else if (lower.includes('area') || lower.includes('location') || lower.includes('city')) autoMap[i] = 'area'
-        else if (lower.includes('rating') || lower.includes('stars')) autoMap[i] = 'rating'
-        else if (lower.includes('note')) autoMap[i] = 'notes'
+        const lower = h.toLowerCase().replace(/[\s_-]/g, '')
+        if (lower.includes('clinic') || lower.includes('hospital') || lower.includes('centre') || lower.includes('center')) autoMap[i] = 'clinic_name'
+        else if (lower.includes('doctor') || lower.includes('dr') || (lower.includes('name') && !lower.includes('clinic'))) autoMap[i] = 'doctor_name'
+        else if (lower.includes('phone') || lower.includes('mobile') || lower.includes('contact') || lower.includes('number') || lower.includes('no')) autoMap[i] = 'phone'
+        else if (lower.includes('area') || lower.includes('location') || lower.includes('city') || lower.includes('place')) autoMap[i] = 'area'
+        else if (lower.includes('rating') || lower.includes('star') || lower.includes('score')) autoMap[i] = 'rating'
+        else if (lower.includes('note') || lower.includes('remark') || lower.includes('comment')) autoMap[i] = 'notes'
         else autoMap[i] = 'skip'
       })
       setMapping(autoMap)
@@ -79,6 +99,17 @@ export default function ImportLeads() {
       setError(e.message)
     }
     setFetching(false)
+  }
+
+  function handleFileUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setCsvText(ev.target.result)
+      setSheetUrl('')
+    }
+    reader.readAsText(file)
   }
 
   async function importLeads() {
@@ -101,7 +132,7 @@ export default function ImportLeads() {
         if (field === 'clinic_name') hasName = true
       })
 
-      if (!hasPhone) errors.push(`Row ${ri + 2}: Missing phone number — skipped`)
+      if (!hasPhone) errors.push(`Row ${ri + 2}: Missing phone — skipped`)
       else if (!hasName) errors.push(`Row ${ri + 2}: Missing clinic name — skipped`)
       else leads.push(lead)
     })
@@ -109,7 +140,6 @@ export default function ImportLeads() {
     let imported = 0
     let skipped = 0
     if (leads.length > 0) {
-      // Insert in batches of 50
       for (let i = 0; i < leads.length; i += 50) {
         const batch = leads.slice(i, i + 50)
         const { data, error: insertErr } = await supabase.from('leads').insert(batch).select()
@@ -121,11 +151,10 @@ export default function ImportLeads() {
     setImportResult({ imported, skipped: skipped + errors.length, errors })
     setImporting(false)
     setStep(4)
-    window.__toast && window.__toast(`${imported} leads imported!`, 'success')
+    window.__toast && window.__toast(`${imported} leads imported successfully!`, 'success')
   }
 
   const reset = () => { setStep(1); setSheetUrl(''); setCsvText(''); setHeaders([]); setRows([]); setMapping({}); setImportResult(null); setError('') }
-
   const previewRows = rows.slice(0, 5)
 
   return (
@@ -139,51 +168,66 @@ export default function ImportLeads() {
         ))}
       </div>
 
-      {/* STEP 1: INPUT */}
+      {/* STEP 1 */}
       {step === 1 && (
         <div className="card">
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, marginBottom: 20 }}>Connect Your Google Sheet</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, marginBottom: 20 }}>Connect Your Google Sheet or Upload File</h3>
 
-          <div style={{ background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 'var(--radius-sm)', padding: '14px 16px', marginBottom: 24, fontSize: 13, color: 'var(--blue)' }}>
-            <strong>How to share your Google Sheet:</strong><br />
-            Open your sheet → File → Share → Change to "Anyone with the link can view" → Copy link
+          <div style={{ background: 'var(--blue-bg)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 'var(--radius-sm)', padding: '14px 16px', marginBottom: 24, fontSize: 13, color: 'var(--blue)', lineHeight: 1.7 }}>
+            <strong>📋 How to share your Google Sheet:</strong><br />
+            Open sheet → <strong>File → Share → Share with others</strong> → Change to <strong>"Anyone with the link"</strong> → Set to <strong>Viewer</strong> → Copy link
           </div>
 
           <div className="form-group">
             <label className="form-label">Google Sheet URL</label>
-            <input className="form-input" placeholder="https://docs.google.com/spreadsheets/d/..." value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
+            <input className="form-input" placeholder="https://docs.google.com/spreadsheets/d/..." value={sheetUrl} onChange={e => { setSheetUrl(e.target.value); setCsvText('') }} />
           </div>
 
-          <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, margin: '16px 0' }}>— or —</div>
+          <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, margin: '16px 0' }}>— or paste CSV data —</div>
 
           <div className="form-group">
             <label className="form-label">Paste CSV Data</label>
-            <textarea className="form-input" placeholder="Clinic Name,Doctor Name,Phone,Area&#10;Apollo Dental,Dr. Sharma,9876543210,Koramangala" value={csvText} onChange={e => setCsvText(e.target.value)} style={{ minHeight: 130, fontFamily: 'monospace', fontSize: 12 }} />
+            <textarea className="form-input" placeholder={"Clinic Name,Doctor Name,Phone,Area\nApollo Dental,Dr. Sharma,9876543210,Koramangala"} value={csvText} onChange={e => { setCsvText(e.target.value); setSheetUrl('') }} style={{ minHeight: 110, fontFamily: 'monospace', fontSize: 12 }} />
           </div>
 
+          <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, margin: '16px 0' }}>— or upload a CSV file —</div>
+
+          {/* FILE UPLOAD */}
+          <div className="import-box" onClick={() => document.getElementById('csv-upload').click()} style={{ cursor: 'pointer', marginBottom: 20 }}>
+            <input id="csv-upload" type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFileUpload} />
+            <Upload size={24} style={{ margin: '0 auto 10px', color: 'var(--text3)' }} />
+            <div style={{ fontSize: 13, color: 'var(--text3)' }}>Click to upload CSV file</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Exported from Excel or Google Sheets</div>
+          </div>
+
+          {csvText && !sheetUrl && (
+            <div style={{ background: 'var(--green-bg)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, color: 'var(--green)', marginBottom: 16 }}>
+              ✅ Data ready — {csvText.split('\n').length - 1} rows detected
+            </div>
+          )}
+
           {error && (
-            <div style={{ background: 'var(--red-bg)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13, color: 'var(--red)', marginBottom: 16 }}>
+            <div style={{ background: 'var(--red-bg)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', fontSize: 13, color: 'var(--red)', marginBottom: 16, lineHeight: 1.6 }}>
               ⚠️ {error}
             </div>
           )}
 
           <button className="btn btn-primary" onClick={fetchSheet} disabled={fetching} style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-            {fetching ? <><div className="spinner" style={{ borderTopColor: 'white' }} /> Fetching...</> : <><Download size={15} /> Fetch & Parse Sheet</>}
+            {fetching
+              ? <><div className="spinner" style={{ borderTopColor: 'white' }} /> Fetching...</>
+              : <><Download size={15} /> Fetch & Parse Data</>}
           </button>
         </div>
       )}
 
-      {/* STEP 2: MAP COLUMNS */}
+      {/* STEP 2: MAP */}
       {step === 2 && (
         <div className="card">
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Map Your Columns</h3>
-          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>We auto-detected the mapping. Review and adjust if needed. {rows.length} rows found.</p>
-
+          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>We auto-detected the mapping. Review and adjust. <strong>{rows.length} rows</strong> found.</p>
           <div className="table-wrap" style={{ marginBottom: 24 }}>
             <table>
-              <thead>
-                <tr><th>Your Column Header</th><th>Maps To</th><th>Sample Value</th></tr>
-              </thead>
+              <thead><tr><th>Your Column</th><th>Maps To</th><th>Sample Value</th></tr></thead>
               <tbody>
                 {headers.map((h, i) => (
                   <tr key={i}>
@@ -199,7 +243,6 @@ export default function ImportLeads() {
               </tbody>
             </table>
           </div>
-
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={reset}>Start Over</button>
             <button className="btn btn-primary" onClick={() => setStep(3)}>Preview <ArrowRight size={14} /></button>
@@ -211,36 +254,25 @@ export default function ImportLeads() {
       {step === 3 && (
         <div className="card">
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Preview Import</h3>
-          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>First 5 rows shown. {rows.length} total rows will be imported.</p>
-
+          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>First 5 rows shown. <strong>{rows.length} total rows</strong> will be imported.</p>
           <div className="table-wrap" style={{ marginBottom: 24, overflowX: 'auto' }}>
             <table>
               <thead>
-                <tr>
-                  {Object.entries(mapping).filter(([, v]) => v && v !== 'skip').map(([i, field]) => (
-                    <th key={i}>{field.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</th>
-                  ))}
-                </tr>
+                <tr>{Object.entries(mapping).filter(([, v]) => v && v !== 'skip').map(([i, field]) => <th key={i}>{field.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</th>)}</tr>
               </thead>
               <tbody>
                 {previewRows.map((row, ri) => (
-                  <tr key={ri}>
-                    {Object.entries(mapping).filter(([, v]) => v && v !== 'skip').map(([colIdx]) => (
-                      <td key={colIdx} style={{ fontSize: 12 }}>{row[parseInt(colIdx)] || '—'}</td>
-                    ))}
-                  </tr>
+                  <tr key={ri}>{Object.entries(mapping).filter(([, v]) => v && v !== 'skip').map(([colIdx]) => <td key={colIdx} style={{ fontSize: 12 }}>{row[parseInt(colIdx)] || '—'}</td>)}</tr>
                 ))}
               </tbody>
             </table>
           </div>
-
           <div style={{ background: 'var(--yellow-bg)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', fontSize: 13, color: 'var(--yellow)', marginBottom: 20 }}>
             ⚠️ Rows without a phone number or clinic name will be skipped automatically.
           </div>
-
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setStep(2)}>Back</button>
-            <button className="btn btn-primary" onClick={importLeads} disabled={importing} style={{ minWidth: 140, justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={importLeads} disabled={importing} style={{ minWidth: 160, justifyContent: 'center' }}>
               {importing ? <><div className="spinner" style={{ borderTopColor: 'white' }} /> Importing...</> : `Import ${rows.length} Leads`}
             </button>
           </div>
@@ -265,12 +297,12 @@ export default function ImportLeads() {
           {importResult.errors.length > 0 && (
             <div style={{ background: 'var(--yellow-bg)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius-sm)', padding: '14px', marginBottom: 20, textAlign: 'left' }}>
               {importResult.errors.slice(0, 5).map((e, i) => <div key={i} style={{ fontSize: 12, color: 'var(--yellow)', marginBottom: 3 }}>⚠ {e}</div>)}
-              {importResult.errors.length > 5 && <div style={{ fontSize: 12, color: 'var(--text3)' }}>+{importResult.errors.length - 5} more</div>}
+              {importResult.errors.length > 5 && <div style={{ fontSize: 12, color: 'var(--text3)' }}>+{importResult.errors.length - 5} more skipped rows</div>}
             </div>
           )}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button className="btn btn-ghost" onClick={reset}>Import More</button>
-            <button className="btn btn-primary" onClick={() => window.location.href = '/leads'}>View All Leads</button>
+            <button className="btn btn-primary" onClick={() => window.location.href = '/leads'}>View All Leads →</button>
           </div>
         </div>
       )}
