@@ -3,14 +3,15 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge, PriorityBadge } from '../components/Badges'
-import { Search, MessageCircle, X, Star, Users } from 'lucide-react'
+import { Search, MessageCircle, X, Star, Users, Plus, Phone } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 const STATUSES = ['', 'new', 'called', 'interested', 'demo_sent', 'negotiating', 'closed', 'dead']
 const PRIORITIES = ['', 'high', 'medium', 'low']
 const AREAS = ['', 'Koramangala', 'Indiranagar', 'Whitefield', 'HSR Layout', 'JP Nagar', 'Jayanagar', 'BTM Layout', 'Electronic City', 'Marathahalli', 'Bannerghatta Road', 'Yelahanka', 'Hebbal', 'Rajajinagar', 'Malleshwaram', 'RT Nagar', 'Other']
-
 const EMPTY_LEAD = { clinic_name: '', doctor_name: '', phone: '', area: '', rating: '', status: 'new', priority: 'medium', notes: '', next_follow_up_date: '', next_action: '' }
+
+const today = new Date().toISOString().split('T')[0]
 
 export default function Leads() {
   const navigate = useNavigate()
@@ -19,7 +20,6 @@ export default function Leads() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
-  const [areaFilter, setAreaFilter] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_LEAD)
   const [saving, setSaving] = useState(false)
@@ -41,17 +41,11 @@ export default function Leads() {
   const filtered = leads.filter(l => {
     const q = search.toLowerCase()
     const matchSearch = !q || l.clinic_name?.toLowerCase().includes(q) || l.doctor_name?.toLowerCase().includes(q) || l.phone?.includes(q) || l.area?.toLowerCase().includes(q)
-    const matchStatus = !statusFilter || l.status === statusFilter
-    const matchPriority = !priorityFilter || l.priority === priorityFilter
-    const matchArea = !areaFilter || l.area === areaFilter
-    return matchSearch && matchStatus && matchPriority && matchArea
+    return matchSearch && (!statusFilter || l.status === statusFilter) && (!priorityFilter || l.priority === priorityFilter)
   })
 
   async function saveLead() {
-    if (!form.clinic_name || !form.phone) {
-      window.__toast && window.__toast('Clinic name and phone are required', 'error')
-      return
-    }
+    if (!form.clinic_name || !form.phone) { window.__toast && window.__toast('Clinic name and phone required', 'error'); return }
     setSaving(true)
     const payload = { ...form, rating: form.rating ? parseFloat(form.rating) : null, next_follow_up_date: form.next_follow_up_date || null, next_action: form.next_action || null }
     if (editId) {
@@ -61,14 +55,12 @@ export default function Leads() {
       await supabase.from('leads').insert(payload)
       window.__toast && window.__toast('Lead added', 'success')
     }
-    setSaving(false)
-    setShowModal(false)
-    fetchLeads()
+    setSaving(false); setShowModal(false); fetchLeads()
   }
 
   async function deleteLead(id, e) {
     e.stopPropagation()
-    if (!window.confirm('Delete this lead? All call history will also be deleted.')) return
+    if (!window.confirm('Delete this lead and all call history?')) return
     await supabase.from('leads').delete().eq('id', id)
     setLeads(prev => prev.filter(l => l.id !== id))
     window.__toast && window.__toast('Lead deleted', 'success')
@@ -77,85 +69,60 @@ export default function Leads() {
   function openEdit(lead, e) {
     e.stopPropagation()
     setForm({ ...lead, rating: lead.rating || '', next_follow_up_date: lead.next_follow_up_date || '', next_action: lead.next_action || '' })
-    setEditId(lead.id)
-    setShowModal(true)
+    setEditId(lead.id); setShowModal(true)
   }
 
   return (
     <div>
-      {/* FILTER BAR */}
+      {/* FILTERS */}
       <div className="filter-bar">
-        <div className="search-wrap">
+        <div className="search-wrap" style={{ flex: 2, minWidth: 200 }}>
           <Search />
-          <input className="search-input" placeholder="Search clinic, doctor, phone..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="search-input" placeholder="Search clinic, phone, area..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
           {STATUSES.filter(Boolean).map(s => <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
         </select>
         <select className="filter-select" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
-          <option value="">All Priorities</option>
+          <option value="">All Priority</option>
           {PRIORITIES.filter(Boolean).map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select>
-        <select className="filter-select" value={areaFilter} onChange={e => setAreaFilter(e.target.value)}>
-          <option value="">All Areas</option>
-          {AREAS.filter(Boolean).map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <span style={{ fontSize: 13, color: 'var(--text3)', marginLeft: 'auto', alignSelf: 'center' }}>{filtered.length} leads</span>
+        <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{filtered.length} leads</span>
       </div>
 
-      {/* TABLE */}
       {loading ? (
-        <div className="loading"><div className="spinner" /> Loading leads...</div>
+        <div className="loading"><div className="spinner" /> Loading...</div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state"><Users size={48} /><p>No leads found</p><span>Add a lead or adjust your filters</span></div>
+        <div className="empty-state"><Users size={40} style={{ margin: '0 auto 12px', opacity: 0.2 }} /><p>No leads found</p><span>Add a lead or adjust filters</span></div>
       ) : (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Clinic</th>
-                <th>Doctor</th>
-                <th>Phone</th>
-                <th>Area</th>
-                <th>Rating</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Follow Up</th>
-                <th>Next Action</th>
-                <th>Actions</th>
+                <th>Clinic</th><th>Phone</th><th>Area</th><th>Status</th><th>Priority</th><th>Follow Up</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(lead => (
                 <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}>
-                  <td style={{ fontWeight: 600 }}>{lead.clinic_name}</td>
-                  <td style={{ color: 'var(--text2)' }}>{lead.doctor_name || '—'}</td>
                   <td>
-                    <a className="phone-link" href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()}>{lead.phone}</a>
+                    <div style={{ fontWeight: 600 }}>{lead.clinic_name}</div>
+                    {lead.doctor_name && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{lead.doctor_name}</div>}
+                    {lead.rating && <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 2 }}><Star size={10} fill="var(--yellow)" color="var(--yellow)" /><span style={{ fontSize: 11, color: 'var(--text3)' }}>{lead.rating}</span></div>}
                   </td>
-                  <td style={{ color: 'var(--text2)' }}>{lead.area || '—'}</td>
-                  <td>
-                    {lead.rating ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Star size={12} fill="var(--yellow)" color="var(--yellow)" />
-                        <span style={{ fontSize: 12 }}>{lead.rating}</span>
-                      </span>
-                    ) : '—'}
-                  </td>
+                  <td><a className="phone-link" href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()}>{lead.phone}</a></td>
+                  <td style={{ color: 'var(--text2)', fontSize: 12 }}>{lead.area || '—'}</td>
                   <td><StatusBadge status={lead.status} /></td>
                   <td><PriorityBadge priority={lead.priority} /></td>
-                  <td style={{ fontSize: 12, color: lead.next_follow_up_date ? 'var(--yellow)' : 'var(--text3)' }}>
+                  <td style={{ fontSize: 12, color: lead.next_follow_up_date ? 'var(--yellow)' : 'var(--text3)', fontWeight: lead.next_follow_up_date ? 600 : 400 }}>
                     {lead.next_follow_up_date ? format(parseISO(lead.next_follow_up_date), 'dd MMM') : '—'}
                   </td>
-                  <td style={{ fontSize: 12, color: 'var(--text3)' }}>{lead.next_action || '—'}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
-                      <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn btn-sm" style={{ padding: '5px 9px' }} title="WhatsApp">
-                        <MessageCircle size={12} />
-                      </a>
-                      <button className="btn-icon" title="Edit" onClick={e => openEdit(lead, e)} style={{ padding: '5px 8px', fontSize: 12 }}>✏️</button>
-                      <button className="btn-icon btn-danger" title="Delete" onClick={e => deleteLead(lead.id, e)} style={{ padding: '5px 8px', fontSize: 12 }}>🗑️</button>
+                    <div style={{ display: 'flex', gap: 5 }} onClick={e => e.stopPropagation()}>
+                      <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ padding: '5px 8px' }}><MessageCircle size={12} /></a>
+                      <button className="btn-icon" onClick={e => openEdit(lead, e)} style={{ padding: '5px 7px', fontSize: 12 }}>✏️</button>
+                      <button className="btn-icon" onClick={e => deleteLead(lead.id, e)} style={{ padding: '5px 7px', fontSize: 12 }}>🗑️</button>
                     </div>
                   </td>
                 </tr>
@@ -165,12 +132,12 @@ export default function Leads() {
         </div>
       )}
 
-      {/* ADD/EDIT MODAL */}
+      {/* ADD / EDIT MODAL */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editId ? 'Edit Lead' : 'Add New Lead'}</h2>
+              <h2>{editId ? '✏️ Edit Lead' : '➕ Add New Lead'}</h2>
               <button className="btn-icon" onClick={() => setShowModal(false)}><X size={16} /></button>
             </div>
             <div className="modal-body">
@@ -187,7 +154,7 @@ export default function Leads() {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Phone *</label>
-                  <input className="form-input" placeholder="9876543210" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+                  <input className="form-input" placeholder="9876543210" type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Area</label>
@@ -216,31 +183,29 @@ export default function Leads() {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Next Follow Up Date</label>
-                  <input type="date" className="form-input" value={form.next_follow_up_date} onChange={e => setForm(f => ({ ...f, next_follow_up_date: e.target.value }))} />
+                  <label className="form-label">📅 Follow Up Date</label>
+                  <input type="date" className="form-input" min={today} value={form.next_follow_up_date} onChange={e => setForm(f => ({ ...f, next_follow_up_date: e.target.value }))} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Next Action</label>
                   <select className="form-input" value={form.next_action} onChange={e => setForm(f => ({ ...f, next_action: e.target.value }))}>
-                    <option value="">Select action</option>
-                    <option value="call">Call</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="send_demo">Send Demo</option>
-                    <option value="meeting">Meeting</option>
-                    <option value="close">Close</option>
+                    <option value="">Select</option>
+                    <option value="call">📞 Call</option>
+                    <option value="whatsapp">💬 WhatsApp</option>
+                    <option value="send_demo">🖥️ Send Demo</option>
+                    <option value="meeting">🤝 Meeting</option>
+                    <option value="close">✅ Close</option>
                   </select>
                 </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Notes</label>
-                <textarea className="form-input" placeholder="Any important notes about this lead..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+                <textarea className="form-input" placeholder="Any notes about this clinic..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={saveLead} disabled={saving}>
-                {saving ? 'Saving...' : editId ? 'Update Lead' : 'Add Lead'}
-              </button>
+              <button className="btn btn-primary" onClick={saveLead} disabled={saving}>{saving ? 'Saving...' : editId ? 'Update' : 'Add Lead'}</button>
             </div>
           </div>
         </div>
