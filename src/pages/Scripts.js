@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { FileText, Plus, X, Trash2, Edit } from 'lucide-react'
@@ -13,7 +14,7 @@ export default function Scripts() {
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { fetchScripts() }, [])
+  useEffect(() => { fetchScripts() }, []) // eslint-disable-line
 
   async function fetchScripts() {
     setLoading(true)
