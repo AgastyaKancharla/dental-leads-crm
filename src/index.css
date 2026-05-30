@@ -298,3 +298,24 @@ input[type="datetime-local"].form-input::-webkit-calendar-picker-indicator:hover
   .form-row-3 { grid-template-columns: 1fr 1fr; }
   table { min-width: 500px; }
 }
+
+/* ── NEW STATUS BADGES ── */
+.badge-future { background: rgba(14,165,233,0.1); color: #0284c7; }
+.badge-quote { background: rgba(168,85,247,0.12); color: #7c3aed; }
+.badge-missed { background: rgba(239,68,68,0.1); color: #dc2626; border: 1px dashed rgba(220,38,38,0.3); }
+
+/* ── NOTE CARD ── */
+.note-card { padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg3); margin-bottom: 8px; }
+.note-card.type-missed { background: #fff8f8; border-color: rgba(220,38,38,0.2); border-left: 3px solid var(--red); }
+.note-card.type-callback { background: #fffdf5; border-color: rgba(217,119,6,0.2); border-left: 3px solid var(--yellow); }
+.note-card.type-quote { background: #fdf4ff; border-color: rgba(168,85,247,0.2); border-left: 3px solid var(--purple); }
+.note-card.type-whatsapp { background: #f0fdf4; border-color: rgba(22,163,74,0.2); border-left: 3px solid var(--green); }
+.note-card.type-meeting { background: #eff6ff; border-color: rgba(37,99,235,0.2); border-left: 3px solid var(--blue); }
+.note-card.type-note { background: var(--bg3); border-left: 3px solid var(--border2); }
+
+/* ── MISSED CALL BANNER ── */
+.missed-banner { background: #fff8f8; border: 1px solid rgba(220,38,38,0.25); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+
+/* ── QUICK NOTE BOX ── */
+.quick-note-box { background: var(--bg3); border: 1.5px dashed var(--border2); border-radius: var(--radius-sm); padding: 12px 14px; cursor: pointer; text-align: center; color: var(--text3); font-size: 13px; transition: all 0.15s; }
+.quick-note-box:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
