@@ -33,7 +33,7 @@ export default function Analytics() {
     const csv = [headers, ...rows].map(r => r.map(v => `"${v || ''}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = `wevalue-leads-${format(new Date(), 'dd-MMM-yyyy')}.csv`; a.click()
+    const a = document.createElement('a'); a.href = url; a.download = `agastyone-leads-${format(new Date(), 'dd-MMM-yyyy')}.csv`; a.click()
     window.__toast && window.__toast('Exported!', 'success')
   }
 
