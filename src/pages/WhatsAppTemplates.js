@@ -13,7 +13,7 @@ export default function WhatsAppTemplates() {
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(null)
-  const [previewLead, setPreviewLead] = useState({ clinic: 'Apollo Dental', doctor: 'Dr. Sharma', demo: 'https://demo.wevalue.in/apollo' })
+  const [previewLead, setPreviewLead] = useState({ clinic: 'Apollo Dental', doctor: 'Dr. Sharma', demo: 'https://demo.agastyone.in/apollo' })
 
   useEffect(() => { fetchTemplates() }, [])
 
