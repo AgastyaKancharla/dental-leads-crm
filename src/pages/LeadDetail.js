@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge, PriorityBadge, OutcomeBadge } from '../components/Badges'
+import AIAudit from './AIAudit'
 import { Phone, MessageCircle, ArrowLeft, Plus, X, Mic, FileText, Bell, Star, Upload, ChevronDown, ChevronUp, Trash2, Edit2, ExternalLink, Copy, AlertTriangle, PhoneMissed, RefreshCw, StickyNote, Calendar } from 'lucide-react'
 import { format, parseISO, formatDistanceToNow } from 'date-fns'
 
@@ -438,6 +439,7 @@ export default function LeadDetail() {
         {[
           { key:'timeline', label:`📞 Timeline (${timeline.length})` },
           { key:'notes',    label:`📝 Notes (${leadNotes.length})` },
+          { key:'audit',    label:`🤖 AI Audit${lead.last_audit_score ? ` (${lead.last_audit_score})` : ''}` },
           { key:'details',  label:'📋 Details' },
           { key:'whatsapp', label:'💬 WA' },
         ].map(t => (
@@ -612,6 +614,9 @@ export default function LeadDetail() {
           </div>
         </div>
       )}
+
+      {/* ══ TAB: AI AUDIT ══ */}
+      {activeTab === 'audit' && <AIAudit lead={lead} />}
 
       {/* ══ TAB: WHATSAPP ══ */}
       {activeTab === 'whatsapp' && (
