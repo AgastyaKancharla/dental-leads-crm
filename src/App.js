@@ -11,6 +11,7 @@ import ImportLeads from './pages/ImportLeads'
 import CallQueue from './pages/CallQueue'
 import WhatsAppTemplates from './pages/WhatsAppTemplates'
 import Analytics from './pages/Analytics'
+import AuditPage from './pages/AuditPage'
 import Toast from './components/Toast'
 import GlobalSearch from './components/GlobalSearch'
 
@@ -19,6 +20,7 @@ const NAV = [
   { path: '/queue',     label: 'Call Queue',   icon: Phone },
   { path: '/leads',     label: 'All Leads',    icon: Users },
   { path: '/reminders', label: "Today's Plan", icon: Bell },
+  { path: '/audit',     label: 'AI Audit',     icon: Zap },
   { path: '/whatsapp',  label: 'WA Templates', icon: MessageCircle },
   { path: '/scripts',   label: 'Call Scripts', icon: FileText },
   { path: '/analytics', label: 'Analytics',    icon: BarChart2 },
@@ -38,16 +40,14 @@ function Layout() {
   }
   window.__toast = addToast
 
-  const currentNav = NAV.find(n => n.path === location.pathname) || { label: 'AgastyaOne CRM' }
+  const currentNav = NAV.find(n => location.pathname === n.path || location.pathname.startsWith(n.path + '/')) || { label: 'AgastyaOne CRM' }
   const closeSidebar = () => setSidebarOpen(false)
   const navTo = (path) => { navigate(path); closeSidebar() }
 
   return (
     <div className="app-layout">
-      {/* OVERLAY */}
       <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={closeSidebar} />
 
-      {/* SIDEBAR */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <h1>Agastya<span>One</span></h1>
@@ -55,8 +55,12 @@ function Layout() {
         </div>
         <nav className="sidebar-nav">
           {NAV.map(({ path, label, icon: Icon }) => (
-            <button key={path} className={`nav-item ${location.pathname === path ? 'active' : ''}`} onClick={() => navTo(path)}>
-              <Icon size={16} /> {label}
+            <button key={path}
+              className={`nav-item ${location.pathname === path || (path !== '/' && location.pathname.startsWith(path)) ? 'active' : ''}`}
+              onClick={() => navTo(path)}>
+              <Icon size={16} />
+              {label}
+              {path === '/audit' && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--accent)', color: 'white', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>AI</span>}
             </button>
           ))}
         </nav>
@@ -65,17 +69,17 @@ function Layout() {
         </div>
       </aside>
 
-      {/* MAIN */}
       <div className="main-content">
         <header className="topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>
               {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-            <span className="topbar-title">{currentNav.label}</span>
+            <span className="topbar-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentNav.label}
+            </span>
           </div>
           <div className="topbar-actions">
-            {/* GLOBAL SEARCH — always visible in topbar */}
             <GlobalSearch />
             {location.pathname === '/leads' && (
               <button className="btn btn-primary btn-sm" onClick={() => window.__openAddLead && window.__openAddLead()}>
@@ -87,20 +91,20 @@ function Layout() {
 
         <div className="page-body">
           <Routes>
-            <Route path="/"          element={<Dashboard />} />
-            <Route path="/queue"     element={<CallQueue />} />
-            <Route path="/leads"     element={<Leads />} />
-            <Route path="/leads/:id" element={<LeadDetail />} />
-            <Route path="/reminders" element={<Reminders />} />
-            <Route path="/whatsapp"  element={<WhatsAppTemplates />} />
-            <Route path="/scripts"   element={<Scripts />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/import"    element={<ImportLeads />} />
+            <Route path="/"           element={<Dashboard />} />
+            <Route path="/queue"      element={<CallQueue />} />
+            <Route path="/leads"      element={<Leads />} />
+            <Route path="/leads/:id"  element={<LeadDetail />} />
+            <Route path="/reminders"  element={<Reminders />} />
+            <Route path="/audit"      element={<AuditPage />} />
+            <Route path="/whatsapp"   element={<WhatsAppTemplates />} />
+            <Route path="/scripts"    element={<Scripts />} />
+            <Route path="/analytics"  element={<Analytics />} />
+            <Route path="/import"     element={<ImportLeads />} />
           </Routes>
         </div>
       </div>
 
-      {/* TOASTS */}
       <div style={{ position: 'fixed', bottom: 16, left: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 999, pointerEvents: 'none' }}>
         {toasts.map(t => <Toast key={t.id} msg={t.msg} type={t.type} />)}
       </div>
