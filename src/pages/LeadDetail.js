@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge, PriorityBadge, OutcomeBadge } from '../components/Badges'
 import AIAudit from './AIAudit'
+import LeadIntelligence from '../components/LeadIntelligence'
 import { Phone, MessageCircle, ArrowLeft, Plus, X, Mic, FileText, Bell, Star, Upload, ChevronDown, ChevronUp, Trash2, Edit2, ExternalLink, Copy, AlertTriangle, PhoneMissed, RefreshCw, StickyNote, Calendar } from 'lucide-react'
 import { format, parseISO, formatDistanceToNow } from 'date-fns'
 
@@ -437,6 +438,7 @@ export default function LeadDetail() {
       {/* ── TABS ── */}
       <div style={{ display:'flex', gap:6, marginBottom:12, overflowX:'auto', paddingBottom:4 }}>
         {[
+          { key:'intel',    label:`🧠 AI Brief${lead.opportunity_score ? ` (${lead.opportunity_score})` : ''}` },
           { key:'timeline', label:`📞 Timeline (${timeline.length})` },
           { key:'notes',    label:`📝 Notes (${leadNotes.length})` },
           { key:'audit',    label:`🤖 AI Audit${lead.last_audit_score ? ` (${lead.last_audit_score})` : ''}` },
@@ -614,6 +616,9 @@ export default function LeadDetail() {
           </div>
         </div>
       )}
+
+      {/* ══ TAB: INTELLIGENCE ══ */}
+      {activeTab === 'intel' && <LeadIntelligence lead={lead} />}
 
       {/* ══ TAB: AI AUDIT ══ */}
       {activeTab === 'audit' && <AIAudit lead={lead} />}
