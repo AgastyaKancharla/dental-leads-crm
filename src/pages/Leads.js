@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge, PriorityBadge } from '../components/Badges'
 import { Search, MessageCircle, X, Star, Users, Plus, Phone, CheckSquare, Square, ChevronDown, Filter, AlertCircle } from 'lucide-react'
-import { format, parseISO, differenceInDays } from 'date-fns'
+import { format, parseISO, differenceInDays, isToday, isPast } from 'date-fns'
 import { generateLeadIntelligence } from '../lib/intelligence'
 
 const STATUSES = ['', 'new', 'called', 'interested', 'future_interested', 'demo_sent', 'quote_sent', 'negotiating', 'closed', 'dead', 'missed', 'not_reachable']
@@ -12,6 +12,7 @@ const PRIORITIES = ['', 'high', 'medium', 'low']
 const AREAS = ['', 'Koramangala', 'Indiranagar', 'Whitefield', 'HSR Layout', 'JP Nagar', 'Jayanagar', 'BTM Layout', 'Electronic City', 'Marathahalli', 'Bannerghatta Road', 'Yelahanka', 'Hebbal', 'Rajajinagar', 'Malleshwaram', 'RT Nagar', 'Other']
 const EMPTY_LEAD = { clinic_name:'', doctor_name:'', phone:'', area:'', rating:'', status:'new', priority:'medium', notes:'', next_follow_up_date:'', next_action:'', email:'', best_time_to_call:'', tags:'' }
 const today = new Date().toISOString().split('T')[0]
+const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', closed:'✅', dead:'❌', missed:'📵', not_reachable:'🔇' }
 
 export default function Leads() {
   const navigate = useNavigate()
@@ -21,6 +22,8 @@ export default function Leads() {
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [areaFilter, setAreaFilter] = useState('')
+  const [hasWebsiteFilter, setHasWebsiteFilter] = useState('')
+  const [viewMode, setViewMode] = useState('cards')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_LEAD)
   const [saving, setSaving] = useState(false)
@@ -53,7 +56,8 @@ export default function Leads() {
   const filtered = leads.filter(l => {
     const q = search.toLowerCase()
     const matchSearch = !q || l.clinic_name?.toLowerCase().includes(q) || l.doctor_name?.toLowerCase().includes(q) || l.phone?.includes(q) || l.area?.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q) || (l.tags || []).some(t => t.toLowerCase().includes(q))
-    return matchSearch && (!statusFilter || l.status === statusFilter) && (!priorityFilter || l.priority === priorityFilter) && (!areaFilter || l.area === areaFilter)
+    const matchWebsite = !hasWebsiteFilter || (hasWebsiteFilter==='yes' ? l.website_url : !l.website_url)
+    return matchSearch && (!statusFilter || l.status === statusFilter) && (!priorityFilter || l.priority === priorityFilter) && (!areaFilter || l.area === areaFilter) && matchWebsite
   })
 
   // ── DUPLICATE CHECK ──
@@ -171,7 +175,7 @@ export default function Leads() {
       <div className="filter-bar">
         <div className="search-wrap" style={{ flex:2, minWidth:200 }}>
           <Search />
-          <input className="search-input" placeholder="Search clinic, phone, email, tag..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="search-input" placeholder="Search clinic, phone, tag..." value={search} onChange={e => setSearch(e.target.value)} />
           {search && <button style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--text3)' }} onClick={() => setSearch('')}><X size={14} /></button>}
         </div>
         <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
@@ -186,7 +190,17 @@ export default function Leads() {
           <option value="">All Areas</option>
           {AREAS.filter(Boolean).map(a => <option key={a} value={a}>{a}</option>)}
         </select>
-        <span style={{ fontSize:12, color:'var(--text3)', whiteSpace:'nowrap' }}>{filtered.length} leads</span>
+        <select className="filter-select" value={hasWebsiteFilter} onChange={e => setHasWebsiteFilter(e.target.value)} style={{ minWidth:130 }}>
+          <option value="">All Leads</option>
+          <option value="yes">🌐 Has Website</option>
+          <option value="no">❌ No Website</option>
+        </select>
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <span style={{ fontSize:12, color:'var(--text3)', whiteSpace:'nowrap' }}>{filtered.length} leads</span>
+          <button onClick={()=>setViewMode(v=>v==='cards'?'table':'cards')} className="btn btn-ghost btn-sm" style={{ flexShrink:0 }}>
+            {viewMode==='cards'?'⊞ Table':'☰ Cards'}
+          </button>
+        </div>
       </div>
 
       {/* ── BULK ACTION BAR ── */}
@@ -231,11 +245,67 @@ export default function Leads() {
         </div>
       )}
 
-      {/* ── TABLE ── */}
+      {/* ── LEAD LIST ── */}
       {loading ? (
         <div className="loading"><div className="spinner" /> Loading...</div>
       ) : filtered.length === 0 ? (
         <div className="empty-state"><Users size={40} style={{ margin:'0 auto 12px', opacity:0.2 }} /><p>No leads found</p><span>Add a lead or adjust filters</span></div>
+      ) : viewMode === 'cards' ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {filtered.map(lead => {
+            const daysSinceCall = lead.last_called_at ? differenceInDays(new Date(), new Date(lead.last_called_at)) : null
+            const isOverdue = lead.next_follow_up_date && isPast(parseISO(lead.next_follow_up_date)) && !isToday(parseISO(lead.next_follow_up_date))
+            const isSelected = selected.has(lead.id)
+            return (
+              <div key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)}
+                style={{ background:'var(--bg2)', border:`1px solid ${isSelected?'var(--accent)':isOverdue?'rgba(220,38,38,0.3)':'var(--border)'}`, borderRadius:'var(--radius)', padding:'14px 16px', cursor:'pointer', boxShadow:'var(--shadow)', transition:'border-color 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'}
+                onMouseLeave={e=>e.currentTarget.style.borderColor=isSelected?'var(--accent)':isOverdue?'rgba(220,38,38,0.3)':'var(--border)'}
+              >
+                <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+                  {/* Checkbox */}
+                  <button style={{ background:'none', border:'none', cursor:'pointer', paddingTop:1, flexShrink:0 }} onClick={e=>toggleSelect(lead.id,e)}>
+                    {isSelected ? <CheckSquare size={15} color="var(--accent)"/> : <Square size={15} color="var(--text3)"/>}
+                  </button>
+                  {/* Main content */}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, flexWrap:'wrap' }}>
+                      <span style={{ fontWeight:700, fontSize:14 }}>{lead.clinic_name}</span>
+                      <StatusBadge status={lead.status}/>
+                      {lead.website_url && <span style={{ fontSize:10, fontWeight:700, background:'var(--blue-bg)', color:'var(--blue)', padding:'1px 6px', borderRadius:99 }}>🌐 Website</span>}
+                      {lead.opportunity_score>0 && <span style={{ fontSize:10, fontWeight:700, background:lead.opportunity_score>=70?'var(--green-bg)':lead.opportunity_score>=40?'var(--yellow-bg)':'var(--bg3)', color:lead.opportunity_score>=70?'var(--green)':lead.opportunity_score>=40?'var(--yellow)':'var(--text3)', padding:'1px 6px', borderRadius:99, marginLeft:'auto' }}>⚡ {lead.opportunity_score}</span>}
+                    </div>
+                    <div style={{ display:'flex', gap:10, fontSize:12, color:'var(--text3)', flexWrap:'wrap', marginBottom:4 }}>
+                      {lead.doctor_name && <span>{lead.doctor_name}</span>}
+                      {lead.area && <span>📍 {lead.area}</span>}
+                      {lead.rating && <span>⭐ {lead.rating}</span>}
+                      {lead.best_time_to_call && <span>🕐 {lead.best_time_to_call}</span>}
+                    </div>
+                    {lead.tags?.length>0 && (
+                      <div style={{ display:'flex', gap:4, marginBottom:4, flexWrap:'wrap' }}>
+                        {lead.tags.slice(0,3).map(t=><span key={t} style={{ fontSize:10, background:'var(--accent-glow)', color:'var(--accent)', padding:'1px 6px', borderRadius:99, fontWeight:600 }}>{t}</span>)}
+                      </div>
+                    )}
+                    <div style={{ display:'flex', gap:12, fontSize:11, color:'var(--text3)', flexWrap:'wrap' }}>
+                      {lead.next_follow_up_date && (
+                        <span style={{ color:isOverdue?'var(--red)':isToday(parseISO(lead.next_follow_up_date))?'var(--yellow)':'var(--text3)', fontWeight:isOverdue||isToday(parseISO(lead.next_follow_up_date))?700:400 }}>
+                          📅 {isOverdue?'OVERDUE: ':isToday(parseISO(lead.next_follow_up_date))?'Today: ':''}
+                          {format(parseISO(lead.next_follow_up_date),'dd MMM')}
+                        </span>
+                      )}
+                      {daysSinceCall!==null && <span style={{ color:daysSinceCall>14?'var(--red)':daysSinceCall>7?'var(--yellow)':'var(--text3)' }}>📞 {daysSinceCall===0?'Today':`${daysSinceCall}d ago`} ({lead.call_count||0} calls)</span>}
+                    </div>
+                  </div>
+                  {/* Quick actions */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:5, flexShrink:0 }} onClick={e=>e.stopPropagation()}>
+                    <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ padding:'6px 8px' }}><MessageCircle size={12}/></a>
+                    <a href={`tel:${lead.phone}`} style={{ padding:'6px 8px', background:'var(--accent)', color:'white', borderRadius:'var(--radius-sm)', display:'flex', alignItems:'center', justifyContent:'center' }}><Phone size={12}/></a>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       ) : (
         <div className="table-wrap">
           <table>
@@ -243,14 +313,14 @@ export default function Leads() {
               <tr>
                 <th style={{ width:36 }}>
                   <button style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center' }} onClick={selectAll}>
-                    {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={15} color="var(--accent)" /> : <Square size={15} color="var(--text3)" />}
+                    {selected.size===filtered.length&&filtered.length>0?<CheckSquare size={15} color="var(--accent)"/>:<Square size={15} color="var(--text3)"/>}
                   </button>
                 </th>
                 <th>Clinic</th>
                 <th>Phone</th>
                 <th>Area</th>
                 <th>Status</th>
-                <th>Priority</th>
+                <th>Score</th>
                 <th>Follow Up</th>
                 <th>Last Call</th>
                 <th>Actions</th>
@@ -262,50 +332,43 @@ export default function Leads() {
                 const isSelected = selected.has(lead.id)
                 const daysSinceCall = lead.last_called_at ? differenceInDays(new Date(), new Date(lead.last_called_at)) : null
                 return (
-                  <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)} style={{ background: isSelected ? 'rgba(91,82,245,0.04)' : undefined }}>
-                    <td onClick={e => e.stopPropagation()}>
-                      <button style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center' }} onClick={e => toggleSelect(lead.id, e)}>
-                        {isSelected ? <CheckSquare size={15} color="var(--accent)" /> : <Square size={15} color="var(--text3)" />}
+                  <tr key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)} style={{ background: isSelected ? 'rgba(91,82,245,0.04)' : undefined }}>
+                    <td onClick={e=>e.stopPropagation()}>
+                      <button style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center' }} onClick={e=>toggleSelect(lead.id,e)}>
+                        {isSelected?<CheckSquare size={15} color="var(--accent)"/>:<Square size={15} color="var(--text3)"/>}
                       </button>
                     </td>
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        {ageColor && <div style={{ width:6, height:6, borderRadius:'50%', background:ageColor, flexShrink:0 }} title="Stale lead" />}
+                        {ageColor && <div style={{ width:6, height:6, borderRadius:'50%', background:ageColor, flexShrink:0 }}/>}
                         <div>
                           <div style={{ fontWeight:600 }}>{lead.clinic_name}</div>
                           {lead.doctor_name && <div style={{ fontSize:11, color:'var(--text3)' }}>{lead.doctor_name}</div>}
-                          {lead.tags?.length > 0 && (
-                            <div style={{ display:'flex', gap:4, marginTop:3, flexWrap:'wrap' }}>
-                              {lead.tags.slice(0,2).map(t => <span key={t} style={{ fontSize:10, background:'var(--accent-glow)', color:'var(--accent)', padding:'1px 6px', borderRadius:99, fontWeight:600 }}>{t}</span>)}
-                              {lead.tags.length > 2 && <span style={{ fontSize:10, color:'var(--text3)' }}>+{lead.tags.length-2}</span>}
-                            </div>
-                          )}
+                          {lead.website_url && <div style={{ fontSize:10, color:'var(--blue)', fontWeight:600 }}>🌐 Has website</div>}
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <a className="phone-link" href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()}>{lead.phone}</a>
-                      {lead.best_time_to_call && <div style={{ fontSize:10, color:'var(--text3)' }}>🕐 {lead.best_time_to_call}</div>}
-                    </td>
+                    <td><a className="phone-link" href={`tel:${lead.phone}`} onClick={e=>e.stopPropagation()}>{lead.phone}</a></td>
                     <td style={{ color:'var(--text2)', fontSize:12 }}>{lead.area||'—'}</td>
-                    <td><StatusBadge status={lead.status} /></td>
-                    <td><PriorityBadge priority={lead.priority} /></td>
-                    <td style={{ fontSize:12, color: lead.next_follow_up_date ? 'var(--yellow)' : 'var(--text3)', fontWeight: lead.next_follow_up_date ? 600 : 400 }}>
-                      {lead.next_follow_up_date ? format(parseISO(lead.next_follow_up_date), 'dd MMM') : '—'}
+                    <td><StatusBadge status={lead.status}/></td>
+                    <td>
+                      {lead.opportunity_score>0 && (
+                        <span style={{ fontSize:12, fontWeight:700, color:lead.opportunity_score>=70?'var(--green)':lead.opportunity_score>=40?'var(--yellow)':'var(--text3)' }}>
+                          {lead.opportunity_score}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ fontSize:12, color:lead.next_follow_up_date?'var(--yellow)':'var(--text3)', fontWeight:lead.next_follow_up_date?600:400 }}>
+                      {lead.next_follow_up_date?format(parseISO(lead.next_follow_up_date),'dd MMM'):'—'}
                     </td>
                     <td style={{ fontSize:11, color:'var(--text3)' }}>
-                      {daysSinceCall !== null ? (
-                        <span style={{ color: daysSinceCall > 14 ? 'var(--red)' : daysSinceCall > 7 ? 'var(--yellow)' : 'var(--text3)' }}>
-                          {daysSinceCall === 0 ? 'Today' : `${daysSinceCall}d ago`}
-                        </span>
-                      ) : '—'}
-                      {lead.call_count > 0 && <div style={{ fontSize:10 }}>{lead.call_count} calls</div>}
+                      {daysSinceCall!==null?<span style={{ color:daysSinceCall>14?'var(--red)':daysSinceCall>7?'var(--yellow)':'var(--text3)' }}>{daysSinceCall===0?'Today':`${daysSinceCall}d ago`}</span>:'—'}
                     </td>
                     <td>
-                      <div style={{ display:'flex', gap:5 }} onClick={e => e.stopPropagation()}>
-                        <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ padding:'5px 8px' }}><MessageCircle size={12} /></a>
-                        <button className="btn-icon" onClick={e => openEdit(lead, e)} style={{ padding:'5px 7px' }}>✏️</button>
-                        <button className="btn-icon" onClick={e => deleteLead(lead.id, e)} style={{ padding:'5px 7px' }}>🗑️</button>
+                      <div style={{ display:'flex', gap:5 }} onClick={e=>e.stopPropagation()}>
+                        <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ padding:'5px 8px' }}><MessageCircle size={12}/></a>
+                        <button className="btn-icon" onClick={e=>openEdit(lead,e)} style={{ padding:'5px 7px' }}>✏️</button>
+                        <button className="btn-icon" onClick={e=>deleteLead(lead.id,e)} style={{ padding:'5px 7px' }}>🗑️</button>
                       </div>
                     </td>
                   </tr>
