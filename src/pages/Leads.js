@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { StatusBadge, PriorityBadge } from '../components/Badges'
 import { Search, MessageCircle, X, Star, Users, Plus, Phone, CheckSquare, Square, ChevronDown, Filter, AlertCircle } from 'lucide-react'
 import { format, parseISO, differenceInDays } from 'date-fns'
+import { generateLeadIntelligence } from '../lib/intelligence'
 
 const STATUSES = ['', 'new', 'called', 'interested', 'future_interested', 'demo_sent', 'quote_sent', 'negotiating', 'closed', 'dead', 'missed', 'not_reachable']
 const PRIORITIES = ['', 'high', 'medium', 'low']
@@ -81,8 +82,10 @@ export default function Leads() {
       await supabase.from('leads').update(payload).eq('id', editId)
       window.__toast && window.__toast('Lead updated', 'success')
     } else {
-      await supabase.from('leads').insert(payload)
-      window.__toast && window.__toast('Lead added', 'success')
+      const { data: newLead } = await supabase.from('leads').insert(payload).select().single()
+      window.__toast && window.__toast('Lead added — AI researching...', 'success')
+      // Trigger intelligence in background (non-blocking)
+      if (newLead) setTimeout(() => generateLeadIntelligence(newLead), 500)
     }
     setSaving(false); setShowModal(false); setDupWarning(null); fetchLeads()
   }
