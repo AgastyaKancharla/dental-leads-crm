@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge } from '../components/Badges'
 import { Phone, MessageCircle, CheckCircle, ChevronRight, Target, Zap, Clock, RefreshCw } from 'lucide-react'
+import LeadIntelligence from '../components/LeadIntelligence'
 import { format, parseISO, isToday, isPast } from 'date-fns'
 
 const QUICK_OUTCOMES = [
@@ -178,6 +179,9 @@ export default function CallQueue() {
                 {lead.last_called_at && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{format(new Date(lead.last_called_at), 'dd MMM, h:mm a')} · {lead.call_count} calls total</div>}
               </div>
             )}
+
+            {/* AI INTELLIGENCE BRIEF */}
+            <LeadIntelligence lead={lead} compact={true} />
 
             {/* CALL ACTIONS */}
             <div style={{ display: 'flex', gap: 10 }}>
