@@ -119,11 +119,31 @@ export default function CallQueue() {
 
   async function fetchQueue() {
     setLoading(true)
+    const todayStart = new Date().toISOString().split('T')[0]
+
+    // Get lead IDs already called today
+    const { data: todayCallData } = await supabase
+      .from('call_logs')
+      .select('lead_id, id')
+      .gte('called_at', todayStart)
+
+    const calledTodayIds = [...new Set((todayCallData||[]).map(c => c.lead_id))]
+    setDoneToday(calledTodayIds.length)
+
     let query = supabase.from('leads').select('*').neq('status','closed').neq('status','dead')
-    if (filter==='overdue') query = query.lt('next_follow_up_date', today).not('next_follow_up_date','is',null)
-    else if (filter==='today') query = query.eq('next_follow_up_date', today)
+
+    // Exclude already-called-today leads (unless filter is overdue/today — still show those)
+    if (filter === 'all' || filter === 'new' || filter === 'hot') {
+      if (calledTodayIds.length > 0) {
+        query = query.not('id', 'in', `(${calledTodayIds.join(',')})`)
+      }
+    }
+
+    if (filter==='overdue') query = query.lt('next_follow_up_date', todayStart).not('next_follow_up_date','is',null)
+    else if (filter==='today') query = query.eq('next_follow_up_date', todayStart)
     else if (filter==='new') query = query.eq('status','new')
     else if (filter==='hot') query = query.in('status',['interested','negotiating'])
+
     const { data } = await query.order('next_follow_up_date',{ascending:true, nullsFirst:false})
     const sorted = (data||[]).sort((a,b)=>{
       const score = l => {
@@ -138,8 +158,6 @@ export default function CallQueue() {
       }
       return score(b)-score(a)
     })
-    const { data: todayCalls } = await supabase.from('call_logs').select('id').gte('called_at', today)
-    setDoneToday(todayCalls?.length||0)
     setQueue(sorted)
     setCurrent(0)
     setLastOutcome(null)
@@ -173,8 +191,9 @@ export default function CallQueue() {
       last_called_at: new Date().toISOString(),
       last_call_notes: callNote||null,
       call_count: (lead.call_count||0)+1,
-      next_follow_up_date: suggestedDate||lead.next_follow_up_date,
-      next_action: nextAction||config?.nextAction||lead.next_action,
+      // Always overwrite follow-up date — never keep stale old date
+      next_follow_up_date: config?.followUpDays === null ? null : (suggestedDate || null),
+      next_action: nextAction||config?.nextAction||null,
     }
     if (config?.nextStatus) updates.status = config.nextStatus
 

@@ -135,13 +135,17 @@ export default function Dashboard() {
 
   const today = new Date().toISOString().split('T')[0]
   const callsToday = callLogs.length
+  const calledTodayIds = new Set(callLogs.map(c => c.lead_id))
   const pct = Math.min((callsToday/target)*100, 100)
   const remaining = Math.max(target-callsToday, 0)
 
-  const overdueLeads = leads.filter(l=>l.next_follow_up_date && isPast(parseISO(l.next_follow_up_date)) && !isToday(parseISO(l.next_follow_up_date))).sort((a,b)=>new Date(a.next_follow_up_date)-new Date(b.next_follow_up_date))
-  const todayLeads = leads.filter(l=>l.next_follow_up_date && isToday(parseISO(l.next_follow_up_date)))
-  const hotLeads = leads.filter(l=>['interested','negotiating','quote_sent'].includes(l.status) && !l.next_follow_up_date)
-  const demoGhosts = leads.filter(l=>{
+  // Exclude leads already called today from urgent action sections
+  const uncalledLeads = leads.filter(l => !calledTodayIds.has(l.id))
+
+  const overdueLeads = uncalledLeads.filter(l=>l.next_follow_up_date && isPast(parseISO(l.next_follow_up_date)) && !isToday(parseISO(l.next_follow_up_date))).sort((a,b)=>new Date(a.next_follow_up_date)-new Date(b.next_follow_up_date))
+  const todayLeads = uncalledLeads.filter(l=>l.next_follow_up_date && isToday(parseISO(l.next_follow_up_date)))
+  const hotLeads = uncalledLeads.filter(l=>['interested','negotiating','quote_sent'].includes(l.status) && !l.next_follow_up_date)
+  const demoGhosts = uncalledLeads.filter(l=>{
     if(l.status!=='demo_sent') return false
     if(!l.demo_sent_date) return true
     return differenceInDays(new Date(), parseISO(l.demo_sent_date))>=3
@@ -150,12 +154,12 @@ export default function Dashboard() {
     const db=b.demo_sent_date?differenceInDays(new Date(),parseISO(b.demo_sent_date)):99
     return db-da
   })
-  const parkedLeads = leads.filter(l=>{
+  const parkedLeads = uncalledLeads.filter(l=>{
     if(!['future_interested','called'].includes(l.status)) return false
     if(!l.next_follow_up_date) return false
     return isThisWeek(parseISO(l.next_follow_up_date)) || isPast(parseISO(l.next_follow_up_date))
   })
-  const newLeads = leads.filter(l=>l.status==='new')
+  const newLeads = uncalledLeads.filter(l=>l.status==='new')
   const totalUrgent = overdueLeads.length+todayLeads.length+hotLeads.length
 
   return (
