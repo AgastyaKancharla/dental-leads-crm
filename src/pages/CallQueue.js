@@ -132,11 +132,10 @@ export default function CallQueue() {
 
     let query = supabase.from('leads').select('*').neq('status','closed').neq('status','dead')
 
-    // Exclude already-called-today leads (unless filter is overdue/today — still show those)
-    if (filter === 'all' || filter === 'new' || filter === 'hot') {
-      if (calledTodayIds.length > 0) {
-        query = query.not('id', 'in', `(${calledTodayIds.join(',')})`)
-      }
+    // Exclude already-called-today leads from ALL filters — no exceptions
+    if (calledTodayIds.length > 0) {
+      query = query.not('id', 'in', `(${calledTodayIds.join(',')})`
+      )
     }
 
     if (filter==='overdue') query = query.lt('next_follow_up_date', todayStart).not('next_follow_up_date','is',null)
