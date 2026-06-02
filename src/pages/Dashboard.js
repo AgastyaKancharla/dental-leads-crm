@@ -103,9 +103,13 @@ export default function Dashboard() {
   async function fetchAll(isRefresh=false) {
     if (isRefresh) setRefreshing(true); else setLoading(true)
     const today = new Date().toISOString().split('T')[0]
+    // IST is UTC+5:30 — use start of today in IST to avoid timezone mismatch
+    const istMidnight = new Date()
+    istMidnight.setHours(0,0,0,0)
+    const todayIST = new Date(istMidnight.getTime() - (5.5*60*60*1000)).toISOString()
     const [l, c, r, t] = await Promise.all([
       supabase.from('leads').select('*').not('status','in','("closed","dead")').order('created_at',{ascending:false}),
-      supabase.from('call_logs').select('id,lead_id,called_at,outcome').gte('called_at', today),
+      supabase.from('call_logs').select('id,lead_id,called_at,outcome').gte('called_at', todayIST),
       supabase.from('reminders').select('*, leads(clinic_name,phone)').eq('status','pending').lte('remind_at', new Date(Date.now()+86400000).toISOString()),
       supabase.from('daily_targets').select('*').eq('date', today).single(),
     ])

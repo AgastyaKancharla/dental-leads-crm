@@ -120,12 +120,16 @@ export default function CallQueue() {
   async function fetchQueue() {
     setLoading(true)
     const todayStart = new Date().toISOString().split('T')[0]
+    // IST midnight fix — Supabase stores UTC, phone is IST (UTC+5:30)
+    const istMidnight = new Date()
+    istMidnight.setHours(0,0,0,0)
+    const todayIST = new Date(istMidnight.getTime() - (5.5*60*60*1000)).toISOString()
 
-    // Get lead IDs already called today
+    // Get lead IDs already called today (using IST midnight)
     const { data: todayCallData } = await supabase
       .from('call_logs')
       .select('lead_id, id')
-      .gte('called_at', todayStart)
+      .gte('called_at', todayIST)
 
     const calledTodayIds = [...new Set((todayCallData||[]).map(c => c.lead_id))]
     setDoneToday(calledTodayIds.length)
@@ -200,6 +204,8 @@ export default function CallQueue() {
 
     setLastOutcome(outcomeKey)
     setDoneToday(d=>d+1)
+    // Remove this lead from the local queue immediately so it can't reappear
+    setQueue(prev => prev.filter(l => l.id !== lead.id))
     setLogging(false)
     window.__toast && window.__toast(`✓ Logged: ${outcomeKey.replace(/_/g,' ')}`, 'success')
 
