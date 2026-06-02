@@ -151,10 +151,13 @@ Respond ONLY with valid JSON, no markdown, no explanation, just the raw JSON obj
 }`
 
     try {
+      const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY || ''
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({

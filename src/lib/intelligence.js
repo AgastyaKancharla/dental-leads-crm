@@ -2,7 +2,8 @@
 import { supabase } from './supabase'
 
 const TAVILY_KEY = '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'
-const ANTHROPIC_HEADER = { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' }
+const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY || ''
+const ANTHROPIC_HEADER = { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
 
 // ── MAIN FUNCTION — call this when lead is added ──
 export async function generateLeadIntelligence(lead) {

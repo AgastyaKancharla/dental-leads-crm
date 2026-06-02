@@ -320,48 +320,37 @@ export default function LeadDetail() {
           <button className="btn-icon" onClick={() => setShowEditModal(true)}><Edit2 size={15} /></button>
         </div>
 
-        {/* ACTION BUTTONS */}
-        <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginTop:14, paddingTop:14, borderTop:'1px solid var(--border)' }}>
-          <a href={`tel:${lead.phone}`} className="btn btn-primary btn-sm"><Phone size={13} /> Call</a>
-          <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn btn-sm"><MessageCircle size={13} /></a>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowCallModal(true)}><Plus size={13} /> Log Call</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowMissedModal(true)} style={{ color:'var(--red)', borderColor:'rgba(220,38,38,0.3)' }}><PhoneMissed size={13} /> Missed</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowNoteModal(true)}><StickyNote size={13} /> Note</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowReminderModal(true)}><Bell size={13} /> Remind</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowDemoModal(true)}>🖥️ Demo</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowQuoteModal(true)}>💰 Quote</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowScriptModal(true)}><FileText size={13} /> Script</button>
+        {/* ACTION BUTTONS — 2 clean rows */}
+        <div style={{ marginTop:14, paddingTop:14, borderTop:'1px solid var(--border)' }}>
+          {/* Row 1: Primary actions */}
+          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+            <a href={`tel:${lead.phone}`} className="btn btn-primary" style={{ flex:1, justifyContent:'center', fontSize:14, padding:'11px' }}>
+              <Phone size={14}/> Call
+            </a>
+            <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ flex:1, justifyContent:'center', padding:'11px', display:'flex', alignItems:'center', gap:6, fontSize:13, fontWeight:600, borderRadius:'var(--radius-sm)', textDecoration:'none' }}>
+              <MessageCircle size={14}/> WhatsApp
+            </a>
+          </div>
+          {/* Row 2: Secondary actions */}
+          <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowCallModal(true)}><Plus size={12}/> Log Call</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowNoteModal(true)}>📝 Note</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowReminderModal(true)}>🔔 Remind</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowDemoModal(true)}>🖥️ Demo</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowQuoteModal(true)}>💰 Quote</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowMissedModal(true)} style={{ color:'var(--red)' }}>📵 Missed</button>
+          </div>
         </div>
       </div>
 
-      {/* ── JOURNEY PROGRESS ── */}
+      {/* ── COMPACT STATUS CHANGER ── */}
       <div className="card" style={{ marginBottom:12 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:12 }}>Journey</div>
-        <div style={{ display:'flex', alignItems:'center' }}>
-          {STAGE_FLOW.map((stage, i) => {
-            const done = stageIndex > i
-            const current = stageIndex === i || (lead.status === 'future_interested' && stage.key === 'interested') || (lead.status === 'missed' && stage.key === 'called')
-            const isLast = i === STAGE_FLOW.length - 1
-            return (
-              <React.Fragment key={stage.key}>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flex: isLast ? 0 : 1, minWidth:0 }}>
-                  <div style={{ width:30, height:30, borderRadius:'50%', background: done ? 'var(--green)' : current ? 'var(--accent)' : 'var(--bg3)', border:`2px solid ${done ? 'var(--green)' : current ? 'var(--accent)' : 'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, cursor:'pointer', transition:'all 0.2s', flexShrink:0, color: done || current ? 'white' : 'var(--text3)' }}
-                    onClick={() => updateStatus(stage.key)}>
-                    {done ? '✓' : stage.emoji}
-                  </div>
-                  <div style={{ fontSize:9, color: current ? 'var(--accent)' : done ? 'var(--green)' : 'var(--text3)', fontWeight: current ? 700 : 400, textAlign:'center', whiteSpace:'nowrap', maxWidth:48, overflow:'hidden', textOverflow:'ellipsis' }}>{stage.label}</div>
-                </div>
-                {!isLast && <div style={{ flex:1, height:2, background: done ? 'var(--green)' : 'var(--border)', marginBottom:16, minWidth:6, transition:'background 0.3s' }} />}
-              </React.Fragment>
-            )
-          })}
-        </div>
-        {/* Special status tags */}
-        <div style={{ display:'flex', gap:7, marginTop:12, flexWrap:'wrap' }}>
-          {['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','closed','dead','missed'].map(s => (
+        <div style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:10 }}>Update Status</div>
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          {['called','interested','future_interested','demo_sent','quote_sent','negotiating','closed','dead'].map(s => (
             <button key={s} onClick={() => updateStatus(s)} disabled={updatingStatus}
-              className={`status-pill ${lead.status === s ? 'active' : ''}`} style={{ fontSize:11 }}>
-              {STATUS_EMOJI[s]} {s.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase())}
+              style={{ fontSize:11, padding:'5px 10px', borderRadius:99, border:`1.5px solid ${lead.status===s?'var(--accent)':'var(--border)'}`, background: lead.status===s?'var(--accent)':'var(--bg2)', color: lead.status===s?'white':'var(--text2)', fontWeight: lead.status===s?700:400, cursor:'pointer', transition:'all 0.15s' }}>
+              {STATUS_EMOJI[s]} {s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
             </button>
           ))}
         </div>
