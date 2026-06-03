@@ -121,6 +121,14 @@ export default function Dashboard() {
     setRefreshing(false)
   }
 
+  async function clearAllOverdue() {
+    if (!window.confirm(`Clear all ${overdueLeads.length} overdue follow-up dates? This removes the stale dates so they stop showing as overdue.`)) return
+    const ids = overdueLeads.map(l => l.id)
+    await supabase.from('leads').update({ next_follow_up_date: null }).in('id', ids)
+    window.__toast && window.__toast(`Cleared ${ids.length} overdue leads`, 'success')
+    fetchAll(true)
+  }
+
   async function snooze(lead, days) {
     const d = new Date(); d.setDate(d.getDate()+days)
     await supabase.from('leads').update({ next_follow_up_date: d.toISOString().split('T')[0] }).eq('id', lead.id)
@@ -224,7 +232,12 @@ export default function Dashboard() {
       {/* OVERDUE */}
       {overdueLeads.length>0 && (
         <div style={{ background:'var(--bg2)', border:'1.5px solid rgba(220,38,38,0.3)', borderRadius:'var(--radius)', padding:'14px 16px', marginBottom:14, boxShadow:'var(--shadow)' }}>
-          <SectionHeader emoji="🔴" title="Overdue — Call Now" count={overdueLeads.length} color="var(--red)"/>
+          <div style={{ display:'flex', alignItems:'center', marginBottom:10 }}>
+            <SectionHeader emoji="🔴" title="Overdue — Call Now" count={overdueLeads.length} color="var(--red)"/>
+            <button onClick={clearAllOverdue} style={{ marginLeft:'auto', fontSize:10, padding:'3px 8px', background:'var(--red-bg)', color:'var(--red)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:99, cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+              Clear All
+            </button>
+          </div>
           {overdueLeads.map(lead=>{
             const daysOver = differenceInDays(new Date(), parseISO(lead.next_follow_up_date))
             return <LeadRow key={lead.id} lead={lead} tag={`${daysOver}d overdue`} tagColor="var(--red)" tagBg="var(--red-bg)" note={lead.notes?.slice(0,50)} onClick={()=>navigate(`/leads/${lead.id}`)}/>

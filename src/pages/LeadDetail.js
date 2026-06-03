@@ -71,6 +71,19 @@ export default function LeadDetail() {
   // Forms
   const today = new Date().toISOString().split('T')[0]
   const [callForm, setCallForm] = useState({ outcome:'interested', duration_minutes:'', notes:'', next_follow_up_date:'', next_action:'call', called_at:'' })
+
+  // Auto-suggest follow-up date when outcome changes
+  function handleOutcomeChange(outcome) {
+    const autoFollowUp = { interested:1, callback:2, demo_requested:1, no_answer:1, future_interested:30, missed:1 }
+    const days = autoFollowUp[outcome]
+    let suggestedDate = ''
+    if (days) {
+      const d = new Date(); d.setDate(d.getDate() + days)
+      suggestedDate = d.toISOString().split('T')[0]
+    }
+    const autoAction = { interested:'send_demo', callback:'call', demo_requested:'send_demo', no_answer:'call', future_interested:'call', missed:'call', not_interested:'', closed:'' }
+    setCallForm(f => ({ ...f, outcome, next_follow_up_date: suggestedDate, next_action: autoAction[outcome] || 'call' }))
+  }
   const [noteForm, setNoteForm] = useState({ note:'', type:'note', scheduled_at:'' })
   const [missedForm, setMissedForm] = useState({ reschedule_date:'', reschedule_time:'', note:'' })
   const [reminderForm, setReminderForm] = useState({ remind_at:'', type:'call', message:'' })
@@ -122,8 +135,9 @@ export default function LeadDetail() {
       reader.onload = async (e) => {
         try {
           const base64 = e.target.result.split(',')[1]
+          const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY || ''
           const resp = await fetch('https://api.anthropic.com/v1/messages', {
-            method:'POST', headers:{'Content-Type':'application/json'},
+            method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
             body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000,
               messages:[{ role:'user', content:[
                 { type:'text', text:'Transcribe this sales call. Format as "Agastya: ... Doctor: ..." Return only transcription.' },
@@ -229,9 +243,14 @@ export default function LeadDetail() {
   // ── SAVE QUOTE ──
   async function saveQuote() {
     setSaving(true)
-    await supabase.from('leads').update({ ...quoteForm, status:'quote_sent' }).eq('id', id)
+    const isClosed = lead.status === 'closed' || callForm.outcome === 'closed'
+    await supabase.from('leads').update({
+      ...quoteForm,
+      status: isClosed ? 'closed' : 'quote_sent',
+      estimated_value: isClosed ? quoteForm.quote_amount : lead.estimated_value,
+    }).eq('id', id)
     await supabase.from('lead_notes').insert({ lead_id: id, type:'quote', note:`💰 Quote sent: ₹${Number(quoteForm.quote_amount).toLocaleString()} on ${quoteForm.quote_sent_date ? format(parseISO(quoteForm.quote_sent_date), 'dd MMM yyyy') : 'today'}` })
-    setLead(p => ({ ...p, ...quoteForm, status:'quote_sent' }))
+    setLead(p => ({ ...p, ...quoteForm, status: isClosed ? 'closed' : 'quote_sent' }))
     setSaving(false); setShowQuoteModal(false)
     fetchAll()
     window.__toast && window.__toast('Quote logged!', 'success')
@@ -308,6 +327,7 @@ export default function LeadDetail() {
               <PriorityBadge priority={lead.priority} />
               {lead.rating && <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:12, color:'var(--yellow)', background:'var(--yellow-bg)', padding:'2px 8px', borderRadius:99 }}><Star size={11} fill="var(--yellow)" /> {lead.rating}</span>}
               {lead.missed_call_count > 0 && <span style={{ fontSize:11, background:'var(--red-bg)', color:'var(--red)', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>📵 {lead.missed_call_count} missed</span>}
+              {lead.partner_approval_needed && <span style={{ fontSize:11, background:'var(--yellow-bg)', color:'var(--yellow)', padding:'2px 8px', borderRadius:99, fontWeight:700 }}>🤝 Needs Partner</span>}
             </div>
             <h2 style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, marginBottom:4, wordBreak:'break-word' }}>{lead.clinic_name}</h2>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', fontSize:13, color:'var(--text2)' }}>
@@ -339,6 +359,23 @@ export default function LeadDetail() {
             <button className="btn btn-ghost btn-sm" onClick={() => setShowDemoModal(true)}>🖥️ Demo</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowQuoteModal(true)}>💰 Quote</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowMissedModal(true)} style={{ color:'var(--red)' }}>📵 Missed</button>
+            {lead.demo_link && (
+              <a href={`https://wa.me/91${lead.phone}?text=${encodeURIComponent(`Hi ${lead.doctor_name ? `Dr. ${lead.doctor_name.split(' ').pop()}` : 'Doctor'} 🙏\n\nAs discussed, here is the demo website we built for *${lead.clinic_name}*:\n${lead.demo_link}\n\nThis is exactly the kind of website we'll build for you — customised with your branding, services & booking system.\n\nLet me know your thoughts! — Agastya | AgastyaOne`)}`}
+                target="_blank" rel="noreferrer"
+                style={{ fontSize:11, padding:'5px 10px', borderRadius:99, background:'#dcfce7', color:'#16a34a', border:'1px solid rgba(22,163,74,0.3)', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+                📤 Send Demo
+              </a>
+            )}
+            <button
+              onClick={async () => {
+                const flag = !lead.partner_approval_needed
+                await supabase.from('leads').update({ partner_approval_needed: flag }).eq('id', id)
+                setLead(p => ({ ...p, partner_approval_needed: flag }))
+                window.__toast && window.__toast(flag ? '🤝 Flagged: needs partner approval' : 'Partner flag removed', 'success')
+              }}
+              style={{ fontSize:11, padding:'5px 10px', borderRadius:99, background: lead.partner_approval_needed ? 'var(--yellow-bg)' : 'var(--bg3)', color: lead.partner_approval_needed ? 'var(--yellow)' : 'var(--text3)', border:`1px solid ${lead.partner_approval_needed ? 'rgba(217,119,6,0.3)' : 'var(--border)'}`, fontWeight:700, cursor:'pointer' }}>
+              🤝 {lead.partner_approval_needed ? 'Needs Partner ✓' : 'Partner?'}
+            </button>
           </div>
         </div>
       </div>
@@ -645,7 +682,7 @@ export default function LeadDetail() {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Outcome *</label>
-                  <select className="form-input" value={callForm.outcome} onChange={e => setCallForm(f => ({ ...f, outcome:e.target.value }))}>
+                  <select className="form-input" value={callForm.outcome} onChange={e => handleOutcomeChange(e.target.value)}>
                     {OUTCOMES.map(o => <option key={o} value={o}>{OUTCOME_EMOJI[o]} {o.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>)}
                   </select>
                 </div>

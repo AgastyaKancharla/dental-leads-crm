@@ -41,7 +41,18 @@ export default function Analytics() {
 
   const total = leads.length
   const closed = leads.filter(l => l.status === 'closed')
-  const revenue = closed.reduce((s, l) => s + (l.estimated_value || 0), 0)
+  const revenue = closed.reduce((s, l) => s + (Number(l.estimated_value) || 0), 0)
+  const pipeline = leads.filter(l => ['interested','negotiating','demo_sent','quote_sent'].includes(l.status)).reduce((s,l) => s + (Number(l.estimated_value) || 0), 0)
+
+  // Monthly revenue from closed deals
+  const monthlyRevenue = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(); d.setMonth(d.getMonth() - (5 - i))
+    const month = format(d, 'MMM')
+    const rev = closed
+      .filter(l => l.last_called_at && format(new Date(l.last_called_at), 'MMM yyyy') === format(d, 'MMM yyyy'))
+      .reduce((s, l) => s + (Number(l.estimated_value) || 0), 0)
+    return { month, revenue: rev }
+  })
 
   // 30-day call trend
   const last30 = Array.from({ length: 30 }, (_, i) => {
@@ -82,9 +93,9 @@ export default function Analytics() {
           { label: 'Total Leads', value: total, color: 'var(--accent)' },
           { label: 'Total Calls', value: callLogs.length, color: 'var(--yellow)' },
           { label: 'Conversion Rate', value: `${total > 0 ? ((closed.length/total)*100).toFixed(1) : 0}%`, color: 'var(--green)' },
-          { label: 'Total Revenue', value: revenue > 0 ? `₹${(revenue/1000).toFixed(0)}k` : '—', color: '#16a34a' },
-          { label: 'Avg Calls/Lead', value: total > 0 ? (callLogs.length/total).toFixed(1) : '—', color: 'var(--blue)' },
-          { label: 'Avg Deal Size', value: closed.length > 0 ? `₹${(revenue/closed.length).toFixed(0)}` : '—', color: 'var(--purple)' },
+          { label: 'Closed Revenue', value: revenue > 0 ? `₹${(revenue/1000).toFixed(0)}k` : '—', color: '#16a34a' },
+          { label: 'Pipeline Value', value: pipeline > 0 ? `₹${(pipeline/1000).toFixed(0)}k` : '—', color: 'var(--purple)' },
+          { label: 'Avg Deal Size', value: closed.length > 0 ? `₹${(revenue/closed.length/1000).toFixed(1)}k` : '—', color: 'var(--blue)' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-label">{s.label}</div>
@@ -92,6 +103,21 @@ export default function Analytics() {
           </div>
         ))}
       </div>
+
+      {/* MONTHLY REVENUE */}
+      {monthlyRevenue.some(m => m.revenue > 0) && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="section-title">💰 Monthly Revenue (Last 6 Months)</div>
+          <ResponsiveContainer width="100%" height={140}>
+            <BarChart data={monthlyRevenue} barSize={32}>
+              <XAxis dataKey="month" tick={{ fill: 'var(--text3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text3)', fontSize: 10 }} axisLine={false} tickLine={false} width={40} tickFormatter={v => v > 0 ? `₹${v/1000}k` : ''} />
+              <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} formatter={v => [`₹${v.toLocaleString()}`, 'Revenue']} />
+              <Bar dataKey="revenue" fill="#16a34a" radius={[6,6,0,0]} name="Revenue" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* 30 DAY TREND */}
       <div className="card" style={{ marginBottom: 16 }}>

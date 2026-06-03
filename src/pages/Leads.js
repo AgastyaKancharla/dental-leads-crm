@@ -23,6 +23,7 @@ export default function Leads() {
   const [priorityFilter, setPriorityFilter] = useState('')
   const [areaFilter, setAreaFilter] = useState('')
   const [hasWebsiteFilter, setHasWebsiteFilter] = useState('')
+  const [partnerFilter, setPartnerFilter] = useState('')
   const [viewMode, setViewMode] = useState('cards')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_LEAD)
@@ -57,7 +58,8 @@ export default function Leads() {
     const q = search.toLowerCase()
     const matchSearch = !q || l.clinic_name?.toLowerCase().includes(q) || l.doctor_name?.toLowerCase().includes(q) || l.phone?.includes(q) || l.area?.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q) || (l.tags || []).some(t => t.toLowerCase().includes(q))
     const matchWebsite = !hasWebsiteFilter || (hasWebsiteFilter==='yes' ? l.website_url : !l.website_url)
-    return matchSearch && (!statusFilter || l.status === statusFilter) && (!priorityFilter || l.priority === priorityFilter) && (!areaFilter || l.area === areaFilter) && matchWebsite
+    const matchPartner = !partnerFilter || (partnerFilter==='yes' ? l.partner_approval_needed : !l.partner_approval_needed)
+    return matchSearch && (!statusFilter || l.status === statusFilter) && (!priorityFilter || l.priority === priorityFilter) && (!areaFilter || l.area === areaFilter) && matchWebsite && matchPartner
   })
 
   // ── DUPLICATE CHECK ──
@@ -194,6 +196,10 @@ export default function Leads() {
           <option value="">All Leads</option>
           <option value="yes">🌐 Has Website</option>
           <option value="no">❌ No Website</option>
+        </select>
+        <select className="filter-select" value={partnerFilter} onChange={e => setPartnerFilter(e.target.value)} style={{ minWidth:140 }}>
+          <option value="">All Leads</option>
+          <option value="yes">🤝 Needs Partner</option>
         </select>
         <div style={{ display:'flex', gap:6, alignItems:'center' }}>
           <span style={{ fontSize:12, color:'var(--text3)', whiteSpace:'nowrap' }}>{filtered.length} leads</span>
