@@ -290,7 +290,7 @@ export default function Dashboard() {
             <span style={{ fontSize:15 }}>🆕</span>
             <span style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700 }}>New Leads — First Call</span>
             <span style={{ marginLeft:'auto' }}>
-              <button className="btn btn-ghost btn-sm" onClick={()=>navigate('/queue')}>Call Queue <ChevronRight size={12}/></button>
+              <button className="btn btn-ghost btn-sm" onClick={()=>navigate('/leads')}>View All <ChevronRight size={12}/></button>
             </span>
           </div>
           {newLeads.slice(0,5).map(lead=>(

@@ -1,14 +1,13 @@
 /* eslint-disable */
 import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Bell, FileText, Download, Plus, Menu, X, Phone, MessageCircle, BarChart2, Zap } from 'lucide-react'
+import { LayoutDashboard, Users, Bell, FileText, Download, Plus, Menu, X, MessageCircle, BarChart2, Zap } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Leads from './pages/Leads'
 import LeadDetail from './pages/LeadDetail'
 import Scripts from './pages/Scripts'
 import Reminders from './pages/Reminders'
 import ImportLeads from './pages/ImportLeads'
-import CallQueue from './pages/CallQueue'
 import WhatsAppTemplates from './pages/WhatsAppTemplates'
 import Analytics from './pages/Analytics'
 import AuditPage from './pages/AuditPage'
@@ -17,7 +16,6 @@ import GlobalSearch from './components/GlobalSearch'
 
 const NAV = [
   { path: '/',          label: 'Dashboard',    icon: LayoutDashboard },
-  { path: '/queue',     label: 'Call Queue',   icon: Phone },
   { path: '/leads',     label: 'All Leads',    icon: Users },
   { path: '/reminders', label: "Today's Plan", icon: Bell },
   { path: '/audit',     label: 'AI Audit',     icon: Zap },
@@ -92,7 +90,6 @@ function Layout() {
         <div className="page-body">
           <Routes>
             <Route path="/"           element={<Dashboard />} />
-            <Route path="/queue"      element={<CallQueue />} />
             <Route path="/leads"      element={<Leads />} />
             <Route path="/leads/:id"  element={<LeadDetail />} />
             <Route path="/reminders"  element={<Reminders />} />
