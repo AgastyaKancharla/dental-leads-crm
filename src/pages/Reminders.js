@@ -17,9 +17,31 @@ export default function Reminders() {
 
   async function fetchAll() {
     setLoading(true)
+
+    // IST midnight fix
+    const istMidnight = new Date()
+    istMidnight.setHours(0, 0, 0, 0)
+    const todayIST = new Date(istMidnight.getTime() - 5.5 * 3600000).toISOString()
+
+    // Get lead IDs already called today
+    const { data: todayCalls } = await supabase
+      .from('call_logs').select('lead_id').gte('called_at', todayIST)
+    const calledTodayIds = [...new Set((todayCalls || []).map(c => c.lead_id))]
+
+    let followUpQuery = supabase.from('leads').select('*')
+      .not('next_follow_up_date', 'is', null)
+      .neq('status', 'closed')
+      .neq('status', 'dead')
+      .order('next_follow_up_date')
+
+    // Exclude already-called-today leads
+    if (calledTodayIds.length > 0) {
+      followUpQuery = followUpQuery.not('id', 'in', `(${calledTodayIds.join(',')})`)
+    }
+
     const [r, f] = await Promise.all([
       supabase.from('reminders').select('*, leads(clinic_name, doctor_name, phone, status)').eq('status', 'pending').order('remind_at'),
-      supabase.from('leads').select('*').not('next_follow_up_date', 'is', null).neq('status', 'closed').neq('status', 'dead').order('next_follow_up_date'),
+      followUpQuery,
     ])
     setReminders(r.data || [])
     setFollowUps(f.data || [])
@@ -30,6 +52,18 @@ export default function Reminders() {
     await supabase.from('reminders').update({ status: 'done' }).eq('id', id)
     setReminders(prev => prev.filter(r => r.id !== id))
     window.__toast && window.__toast('Marked as done!', 'success')
+  }
+
+  async function markFollowUpDone(leadId) {
+    // Clear the stale follow-up date so it stops showing as overdue
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    await supabase.from('leads').update({
+      next_follow_up_date: null,
+      last_called_at: new Date().toISOString(),
+    }).eq('id', leadId)
+    setFollowUps(prev => prev.filter(l => l.id !== leadId))
+    window.__toast && window.__toast('Cleared — won\'t show again today', 'success')
   }
 
   async function snooze(id) {
@@ -96,6 +130,8 @@ export default function Reminders() {
         </div>
         <a href={`tel:${lead.phone}`} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={e => e.stopPropagation()}><Phone size={11} /> Call</a>
         <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ fontSize: 11 }} onClick={e => e.stopPropagation()}><MessageCircle size={11} /> WA</a>
+        <button className="btn btn-sm" style={{ background: 'var(--green-bg)', color: 'var(--green)', border: '1px solid rgba(34,197,94,0.3)', fontSize: 11 }}
+          onClick={e => { e.stopPropagation(); markFollowUpDone(lead.id) }}>✓ Done</button>
       </div>
     </div>
   )
