@@ -29,13 +29,11 @@ export default function Leads() {
   const [form, setForm] = useState(EMPTY_LEAD)
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState(null)
-  // Bulk select
   const [selected, setSelected] = useState(new Set())
   const [showBulkBar, setShowBulkBar] = useState(false)
   const [bulkAction, setBulkAction] = useState('')
   const [bulkValue, setBulkValue] = useState('')
   const [bulkSaving, setBulkSaving] = useState(false)
-  // Duplicate check
   const [dupWarning, setDupWarning] = useState(null)
   const [checkingDup, setCheckingDup] = useState(false)
 
@@ -62,7 +60,6 @@ export default function Leads() {
     return matchSearch && (!statusFilter || l.status === statusFilter) && (!priorityFilter || l.priority === priorityFilter) && (!areaFilter || l.area === areaFilter) && matchWebsite && matchPartner
   })
 
-  // ── DUPLICATE CHECK ──
   async function checkDuplicate(phone) {
     if (!phone || phone.length < 8) return
     setCheckingDup(true)
@@ -73,7 +70,6 @@ export default function Leads() {
     setCheckingDup(false)
   }
 
-  // ── SAVE LEAD ──
   async function saveLead() {
     if (!form.clinic_name || !form.phone) { window.__toast && window.__toast('Clinic name and phone required', 'error'); return }
     setSaving(true)
@@ -90,7 +86,6 @@ export default function Leads() {
     } else {
       const { data: newLead } = await supabase.from('leads').insert(payload).select().single()
       window.__toast && window.__toast('Lead added — AI researching...', 'success')
-      // Trigger intelligence in background (non-blocking)
       if (newLead) setTimeout(() => generateLeadIntelligence(newLead), 500)
     }
     setSaving(false); setShowModal(false); setDupWarning(null); fetchLeads()
@@ -110,7 +105,6 @@ export default function Leads() {
     setEditId(lead.id); setShowModal(true)
   }
 
-  // ── BULK SELECT ──
   function toggleSelect(id, e) {
     e.stopPropagation()
     setSelected(prev => {
@@ -125,14 +119,12 @@ export default function Leads() {
     else setSelected(new Set(filtered.map(l => l.id)))
   }
 
-  // ── BULK ACTIONS ──
   async function applyBulkAction() {
     if (!bulkAction) { window.__toast && window.__toast('Select an action', 'error'); return }
     if (!bulkValue && bulkAction !== 'delete') { window.__toast && window.__toast('Select a value', 'error'); return }
     if (bulkAction === 'delete' && !window.confirm(`Delete ${selected.size} leads? This cannot be undone.`)) return
     setBulkSaving(true)
     const ids = Array.from(selected)
-
     if (bulkAction === 'delete') {
       for (const id of ids) await supabase.from('leads').delete().eq('id', id)
       window.__toast && window.__toast(`${ids.length} leads deleted`, 'success')
@@ -149,12 +141,10 @@ export default function Leads() {
       await supabase.from('leads').update({ next_action: bulkValue }).in('id', ids)
       window.__toast && window.__toast(`${ids.length} leads next action → ${bulkValue}`, 'success')
     }
-
     setBulkSaving(false); setSelected(new Set()); setBulkAction(''); setBulkValue('')
     fetchLeads()
   }
 
-  // Lead age indicator
   function getAgeColor(createdAt, status) {
     if (['closed', 'dead'].includes(status)) return null
     const days = differenceInDays(new Date(), new Date(createdAt))
@@ -221,7 +211,6 @@ export default function Leads() {
             <option value="next_action">Set Next Action</option>
             <option value="delete">🗑️ Delete All</option>
           </select>
-
           {bulkAction === 'status' && (
             <select style={{ padding:'6px 10px', borderRadius:6, border:'none', fontSize:12 }} value={bulkValue} onChange={e => setBulkValue(e.target.value)}>
               <option value="">Select status...</option>
@@ -243,7 +232,6 @@ export default function Leads() {
               {['call','whatsapp','send_demo','send_quote','meeting','close'].map(a => <option key={a} value={a}>{a.replace(/_/g,' ')}</option>)}
             </select>
           )}
-
           <button className="btn btn-sm" style={{ background:'white', color:'var(--accent)', fontWeight:700 }} onClick={applyBulkAction} disabled={bulkSaving}>
             {bulkSaving ? 'Applying...' : 'Apply'}
           </button>
@@ -262,6 +250,13 @@ export default function Leads() {
             const daysSinceCall = lead.last_called_at ? differenceInDays(new Date(), new Date(lead.last_called_at)) : null
             const isOverdue = lead.next_follow_up_date && isPast(parseISO(lead.next_follow_up_date)) && !isToday(parseISO(lead.next_follow_up_date))
             const isSelected = selected.has(lead.id)
+
+            // ── CONTEXT SNIPPET ──
+            const contextNote = lead.last_call_notes || lead.notes || null
+            const nextActionLabel = lead.next_action
+              ? lead.next_action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+              : null
+
             return (
               <div key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)}
                 style={{ background:'var(--bg2)', border:`1px solid ${isSelected?'var(--accent)':isOverdue?'rgba(220,38,38,0.3)':'var(--border)'}`, borderRadius:'var(--radius)', padding:'14px 16px', cursor:'pointer', boxShadow:'var(--shadow)', transition:'border-color 0.15s' }}
@@ -295,12 +290,27 @@ export default function Leads() {
                     <div style={{ display:'flex', gap:12, fontSize:11, color:'var(--text3)', flexWrap:'wrap' }}>
                       {lead.next_follow_up_date && (
                         <span style={{ color:isOverdue?'var(--red)':isToday(parseISO(lead.next_follow_up_date))?'var(--yellow)':'var(--text3)', fontWeight:isOverdue||isToday(parseISO(lead.next_follow_up_date))?700:400 }}>
-                          📅 {isOverdue?'OVERDUE: ':isToday(parseISO(lead.next_follow_up_date))?'Today: ':''}
-                          {format(parseISO(lead.next_follow_up_date),'dd MMM')}
+                          📅 {isOverdue?'OVERDUE: ':isToday(parseISO(lead.next_follow_up_date))?'Today: ':''}{format(parseISO(lead.next_follow_up_date),'dd MMM')}
                         </span>
                       )}
                       {daysSinceCall!==null && <span style={{ color:daysSinceCall>14?'var(--red)':daysSinceCall>7?'var(--yellow)':'var(--text3)' }}>📞 {daysSinceCall===0?'Today':`${daysSinceCall}d ago`} ({lead.call_count||0} calls)</span>}
                     </div>
+
+                    {/* ── CONTEXT PREVIEW (NEW) ── */}
+                    {(contextNote || nextActionLabel) && (
+                      <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid var(--border)' }}>
+                        {contextNote && (
+                          <p style={{ fontSize:11, color:'var(--text3)', margin:0, marginBottom: nextActionLabel ? 3 : 0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            💬 {contextNote}
+                          </p>
+                        )}
+                        {nextActionLabel && (
+                          <p style={{ fontSize:11, fontWeight:700, color:'var(--accent)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            👉 {nextActionLabel}{lead.next_follow_up_date ? ` · ${format(parseISO(lead.next_follow_up_date), 'dd MMM')}` : ''}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {/* Quick actions */}
                   <div style={{ display:'flex', flexDirection:'column', gap:5, flexShrink:0 }} onClick={e=>e.stopPropagation()}>
@@ -328,168 +338,45 @@ export default function Leads() {
                 <th>Status</th>
                 <th>Score</th>
                 <th>Follow Up</th>
-                <th>Last Call</th>
-                <th>Actions</th>
+                <th>Last Note</th>
+                <th>Next Action</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(lead => {
-                const ageColor = getAgeColor(lead.created_at, lead.status)
+                const isOverdue = lead.next_follow_up_date && isPast(parseISO(lead.next_follow_up_date)) && !isToday(parseISO(lead.next_follow_up_date))
                 const isSelected = selected.has(lead.id)
-                const daysSinceCall = lead.last_called_at ? differenceInDays(new Date(), new Date(lead.last_called_at)) : null
                 return (
-                  <tr key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)} style={{ background: isSelected ? 'rgba(91,82,245,0.04)' : undefined }}>
+                  <tr key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)} style={{ cursor:'pointer', background:isSelected?'var(--accent-glow)':'transparent' }}>
                     <td onClick={e=>e.stopPropagation()}>
-                      <button style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center' }} onClick={e=>toggleSelect(lead.id,e)}>
-                        {isSelected?<CheckSquare size={15} color="var(--accent)"/>:<Square size={15} color="var(--text3)"/>}
+                      <button style={{ background:'none', border:'none', cursor:'pointer' }} onClick={e=>toggleSelect(lead.id,e)}>
+                        {isSelected?<CheckSquare size={14} color="var(--accent)"/>:<Square size={14} color="var(--text3)"/>}
                       </button>
                     </td>
-                    <td>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        {ageColor && <div style={{ width:6, height:6, borderRadius:'50%', background:ageColor, flexShrink:0 }}/>}
-                        <div>
-                          <div style={{ fontWeight:600 }}>{lead.clinic_name}</div>
-                          {lead.doctor_name && <div style={{ fontSize:11, color:'var(--text3)' }}>{lead.doctor_name}</div>}
-                          {lead.website_url && <div style={{ fontSize:10, color:'var(--blue)', fontWeight:600 }}>🌐 Has website</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td><a className="phone-link" href={`tel:${lead.phone}`} onClick={e=>e.stopPropagation()}>{lead.phone}</a></td>
-                    <td style={{ color:'var(--text2)', fontSize:12 }}>{lead.area||'—'}</td>
+                    <td><span style={{ fontWeight:600, fontSize:13 }}>{lead.clinic_name}</span>{lead.doctor_name&&<div style={{ fontSize:11, color:'var(--text3)' }}>{lead.doctor_name}</div>}</td>
+                    <td style={{ fontSize:12 }}>{lead.phone}</td>
+                    <td style={{ fontSize:12 }}>{lead.area||'—'}</td>
                     <td><StatusBadge status={lead.status}/></td>
-                    <td>
-                      {lead.opportunity_score>0 && (
-                        <span style={{ fontSize:12, fontWeight:700, color:lead.opportunity_score>=70?'var(--green)':lead.opportunity_score>=40?'var(--yellow)':'var(--text3)' }}>
-                          {lead.opportunity_score}
-                        </span>
-                      )}
+                    <td style={{ fontSize:12, color:'var(--text3)' }}>{lead.opportunity_score||'—'}</td>
+                    <td style={{ fontSize:12, color:isOverdue?'var(--red)':'var(--text3)', fontWeight:isOverdue?700:400 }}>
+                      {lead.next_follow_up_date ? format(parseISO(lead.next_follow_up_date),'dd MMM') : '—'}
                     </td>
-                    <td style={{ fontSize:12, color:lead.next_follow_up_date?'var(--yellow)':'var(--text3)', fontWeight:lead.next_follow_up_date?600:400 }}>
-                      {lead.next_follow_up_date?format(parseISO(lead.next_follow_up_date),'dd MMM'):'—'}
+                    <td style={{ fontSize:11, color:'var(--text3)', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {lead.last_call_notes || lead.notes || '—'}
                     </td>
-                    <td style={{ fontSize:11, color:'var(--text3)' }}>
-                      {daysSinceCall!==null?<span style={{ color:daysSinceCall>14?'var(--red)':daysSinceCall>7?'var(--yellow)':'var(--text3)' }}>{daysSinceCall===0?'Today':`${daysSinceCall}d ago`}</span>:'—'}
+                    <td style={{ fontSize:11, fontWeight:600, color:'var(--accent)' }}>
+                      {lead.next_action ? lead.next_action.replace(/_/g,' ') : '—'}
                     </td>
-                    <td>
-                      <div style={{ display:'flex', gap:5 }} onClick={e=>e.stopPropagation()}>
-                        <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ padding:'5px 8px' }}><MessageCircle size={12}/></a>
-                        <button className="btn-icon" onClick={e=>openEdit(lead,e)} style={{ padding:'5px 7px' }}>✏️</button>
-                        <button className="btn-icon" onClick={e=>deleteLead(lead.id,e)} style={{ padding:'5px 7px' }}>🗑️</button>
-                      </div>
+                    <td onClick={e=>e.stopPropagation()} style={{ display:'flex', gap:4 }}>
+                      <a href={`https://wa.me/91${lead.phone}`} target="_blank" rel="noreferrer" className="wa-btn" style={{ padding:'4px 6px' }}><MessageCircle size={11}/></a>
+                      <a href={`tel:${lead.phone}`} style={{ padding:'4px 6px', background:'var(--accent)', color:'white', borderRadius:'var(--radius-sm)', display:'flex', alignItems:'center', justifyContent:'center' }}><Phone size={11}/></a>
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* ── ADD/EDIT MODAL ── */}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); setDupWarning(null) }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editId ? '✏️ Edit Lead' : '➕ Add New Lead'}</h2>
-              <button className="btn-icon" onClick={() => { setShowModal(false); setDupWarning(null) }}><X size={16} /></button>
-            </div>
-            <div className="modal-body">
-              {/* DUPLICATE WARNING */}
-              {dupWarning && (
-                <div style={{ background:'var(--yellow-bg)', border:'1px solid rgba(217,119,6,0.3)', borderRadius:'var(--radius-sm)', padding:'10px 14px', marginBottom:14 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:'var(--yellow)', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}><AlertCircle size={14} /> Possible Duplicate Detected</div>
-                  {dupWarning.map(d => (
-                    <div key={d.id} style={{ fontSize:12, color:'var(--text2)' }}>• {d.clinic_name} — {d.status}</div>
-                  ))}
-                  <div style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>You can still save if it's a different branch.</div>
-                </div>
-              )}
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Clinic Name *</label>
-                  <input className="form-input" placeholder="Apollo Dental" value={form.clinic_name} onChange={e => setForm(f => ({ ...f, clinic_name:e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Doctor Name</label>
-                  <input className="form-input" placeholder="Dr. Sharma" value={form.doctor_name} onChange={e => setForm(f => ({ ...f, doctor_name:e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Phone *</label>
-                  <input className="form-input" placeholder="9876543210" type="tel" value={form.phone}
-                    onChange={e => setForm(f => ({ ...f, phone:e.target.value }))}
-                    onBlur={e => checkDuplicate(e.target.value)} />
-                  {checkingDup && <span style={{ fontSize:11, color:'var(--text3)' }}>Checking for duplicates...</span>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input className="form-input" placeholder="clinic@gmail.com" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email:e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Area</label>
-                  <select className="form-input" value={form.area} onChange={e => setForm(f => ({ ...f, area:e.target.value }))}>
-                    {AREAS.map(a => <option key={a} value={a}>{a||'Select area'}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Best Time to Call</label>
-                  <input className="form-input" placeholder="e.g. After 5 PM" value={form.best_time_to_call} onChange={e => setForm(f => ({ ...f, best_time_to_call:e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-row-3">
-                <div className="form-group">
-                  <label className="form-label">Rating</label>
-                  <input className="form-input" type="number" step="0.1" min="1" max="5" placeholder="4.2" value={form.rating} onChange={e => setForm(f => ({ ...f, rating:e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select className="form-input" value={form.status} onChange={e => setForm(f => ({ ...f, status:e.target.value }))}>
-                    {STATUSES.filter(Boolean).map(s => <option key={s} value={s}>{s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Priority</label>
-                  <select className="form-input" value={form.priority} onChange={e => setForm(f => ({ ...f, priority:e.target.value }))}>
-                    {PRIORITIES.filter(Boolean).map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">📅 Follow Up Date</label>
-                  <input type="date" className="form-input" min={today} value={form.next_follow_up_date} onChange={e => setForm(f => ({ ...f, next_follow_up_date:e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Next Action</label>
-                  <select className="form-input" value={form.next_action} onChange={e => setForm(f => ({ ...f, next_action:e.target.value }))}>
-                    <option value="">Select</option>
-                    <option value="call">📞 Call</option>
-                    <option value="whatsapp">💬 WhatsApp</option>
-                    <option value="send_demo">🖥️ Send Demo</option>
-                    <option value="send_quote">💰 Send Quote</option>
-                    <option value="meeting">🤝 Meeting</option>
-                    <option value="close">✅ Close</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tags <span style={{ fontWeight:400, color:'var(--text3)' }}>(comma separated)</span></label>
-                <input className="form-input" placeholder="e.g. Google Ads, Budget issue, Referred" value={form.tags} onChange={e => setForm(f => ({ ...f, tags:e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <textarea className="form-input" placeholder="Any important notes..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes:e.target.value }))} />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => { setShowModal(false); setDupWarning(null) }}>Cancel</button>
-              <button className="btn btn-primary" onClick={saveLead} disabled={saving}>{saving?'Saving...':editId?'Update':'Add Lead'}</button>
-            </div>
-          </div>
         </div>
       )}
     </div>
