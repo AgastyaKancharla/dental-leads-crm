@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Phone, MessageCircle, ChevronRight, RefreshCw } from 'lucide-react'
-import { isToday, isPast, parseISO, differenceInDays, isThisWeek } from 'date-fns'
+import { isToday, isPast, parseISO, differenceInDays, isThisWeek, format } from 'date-fns'
 
 const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', closed:'✅', dead:'❌', missed:'📵' }
 
@@ -24,11 +24,35 @@ function SectionHeader({ emoji, title, count, color }) {
   )
 }
 
+// Next action chip config
+const NEXT_ACTION_CHIP = {
+  call:       { label:'📞 Call',        bg:'rgba(96,165,250,0.12)',  color:'#60a5fa',  border:'rgba(96,165,250,0.25)' },
+  whatsapp:   { label:'💬 WhatsApp',    bg:'rgba(52,211,153,0.1)',   color:'#34d399',  border:'rgba(52,211,153,0.25)' },
+  send_demo:  { label:'📤 Send Demo',   bg:'rgba(192,132,252,0.12)', color:'#c084fc',  border:'rgba(192,132,252,0.25)' },
+  send_quote: { label:'💰 Send Quote',  bg:'rgba(251,146,60,0.12)',  color:'#fb923c',  border:'rgba(251,146,60,0.25)' },
+  meeting:    { label:'🤝 Meeting',     bg:'rgba(251,191,36,0.1)',   color:'#fbbf24',  border:'rgba(251,191,36,0.25)' },
+  close:      { label:'✅ Close Deal',  bg:'rgba(52,211,153,0.12)',  color:'#34d399',  border:'rgba(52,211,153,0.3)' },
+  follow_up:  { label:'🔔 Follow Up',   bg:'rgba(124,106,247,0.12)', color:'#9d8fff',  border:'rgba(124,106,247,0.25)' },
+}
+
+function NextActionChip({ action, date }) {
+  const cfg = NEXT_ACTION_CHIP[action] || { label: '👉 ' + action.replace(/_/g,' '), bg:'rgba(124,106,247,0.1)', color:'#9d8fff', border:'rgba(124,106,247,0.2)' }
+  return (
+    <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:99, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}`, fontSize:11, fontWeight:700, flexShrink:0 }}>
+      {cfg.label}
+      {date && <span style={{ opacity:0.7, fontWeight:500 }}>· {date}</span>}
+    </div>
+  )
+}
+
 function LeadRow({ lead, tag, tagColor, tagBg, note, onClick }) {
   const daysSince = lead.last_called_at ? differenceInDays(new Date(), new Date(lead.last_called_at)) : null
+  const hasNextAction = !!lead.next_action
+  const followUpDate = lead.next_follow_up_date ? (() => { try { return format(parseISO(lead.next_follow_up_date), 'dd MMM') } catch { return null } })() : null
+
   return (
     <div onClick={onClick} style={{
-      display:'flex', alignItems:'center', gap:10, padding:'12px 14px',
+      display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px',
       background:'var(--bg2)', borderRadius:'var(--radius-sm)',
       border:'1px solid var(--border)', marginBottom:8, cursor:'pointer',
       transition:'border-color 0.15s', boxShadow:'var(--shadow)'
@@ -37,15 +61,17 @@ function LeadRow({ lead, tag, tagColor, tagBg, note, onClick }) {
       onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}
     >
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3, flexWrap:'wrap' }}>
           <span style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.clinic_name}</span>
           {tag && <span style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99, background:tagBg||'var(--red-bg)', color:tagColor||'var(--red)', flexShrink:0 }}>{tag}</span>}
         </div>
-        <div style={{ fontSize:11, color:'var(--text3)' }}>
+        <div style={{ fontSize:11, color:'var(--text3)', marginBottom: hasNextAction ? 6 : 0 }}>
           {lead.area && <span>📍 {lead.area}</span>}
-          {note && <span style={{ color:'var(--text2)' }}> · {note}</span>}
+          {(lead.last_call_notes || note) && <span style={{ color:'var(--text2)' }}> · {(lead.last_call_notes || note)?.slice(0,55)}{(lead.last_call_notes || note)?.length > 55 ? '...' : ''}</span>}
           {daysSince !== null && <span style={{ color:daysSince>3?'var(--red)':'var(--text3)' }}> · {daysSince===0?'called today':`${daysSince}d ago`}</span>}
         </div>
+        {/* ── NEXT ACTION CHIP ── */}
+        {hasNextAction && <NextActionChip action={lead.next_action} date={followUpDate} />}
       </div>
       <div style={{ display:'flex', gap:6, flexShrink:0 }} onClick={e=>e.stopPropagation()}>
         <a href={`tel:${lead.phone}`} style={{ padding:'7px 9px', background:'var(--accent)', color:'white', borderRadius:'var(--radius-sm)', display:'flex', alignItems:'center' }}><Phone size={13}/></a>

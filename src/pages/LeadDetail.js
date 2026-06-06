@@ -172,7 +172,21 @@ export default function LeadDetail() {
       status: statusMap[callForm.outcome] || lead.status,
       next_follow_up_date: callForm.next_follow_up_date || null,
       next_action: callForm.next_action || null,
+      last_call_notes: callForm.notes || null,
+      last_called_at: calledAt,
+      call_count: (lead.call_count || 0) + 1,
     }).eq('id', id)
+    // ── Log next action to timeline ──
+    if (callForm.next_action) {
+      const ACTION_LABELS = { call:'📞 Call', whatsapp:'💬 WhatsApp', send_demo:'📤 Send Demo', send_quote:'💰 Send Quote', meeting:'🤝 Meeting', close:'✅ Close Deal', follow_up:'🔔 Follow Up' }
+      const actionLabel = ACTION_LABELS[callForm.next_action] || callForm.next_action.replace(/_/g,' ')
+      const dateStr = callForm.next_follow_up_date ? ` by ${format(parseISO(callForm.next_follow_up_date), 'dd MMM')}` : ''
+      await supabase.from('lead_notes').insert({
+        lead_id: id,
+        note: `👉 Next action set: ${actionLabel}${dateStr}`,
+        type: 'note',
+      })
+    }
     setSaving(false); setShowCallModal(false)
     setCallForm({ outcome:'interested', duration_minutes:'', notes:'', next_follow_up_date:'', next_action:'call', called_at:'' })
     setAudioFile(null); fetchAll()

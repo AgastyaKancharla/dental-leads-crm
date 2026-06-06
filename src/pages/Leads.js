@@ -13,7 +13,16 @@ const AREAS = ['', 'Koramangala', 'Indiranagar', 'Whitefield', 'HSR Layout', 'JP
 const EMPTY_LEAD = { clinic_name:'', doctor_name:'', phone:'', area:'', rating:'', status:'new', priority:'medium', notes:'', next_follow_up_date:'', next_action:'', email:'', best_time_to_call:'', tags:'' }
 const today = new Date().toISOString().split('T')[0]
 
-// Priority border glow colors
+// Next action chip config
+const NEXT_ACTION_CHIP = {
+  call:       { label:'📞 Call',        bg:'rgba(96,165,250,0.12)',  color:'#60a5fa',  border:'rgba(96,165,250,0.25)' },
+  whatsapp:   { label:'💬 WhatsApp',    bg:'rgba(52,211,153,0.1)',   color:'#34d399',  border:'rgba(52,211,153,0.25)' },
+  send_demo:  { label:'📤 Send Demo',   bg:'rgba(192,132,252,0.12)', color:'#c084fc',  border:'rgba(192,132,252,0.25)' },
+  send_quote: { label:'💰 Send Quote',  bg:'rgba(251,146,60,0.12)',  color:'#fb923c',  border:'rgba(251,146,60,0.25)' },
+  meeting:    { label:'🤝 Meeting',     bg:'rgba(251,191,36,0.1)',   color:'#fbbf24',  border:'rgba(251,191,36,0.25)' },
+  close:      { label:'✅ Close Deal',  bg:'rgba(52,211,153,0.12)',  color:'#34d399',  border:'rgba(52,211,153,0.3)' },
+  follow_up:  { label:'🔔 Follow Up',   bg:'rgba(124,106,247,0.12)', color:'#9d8fff',  border:'rgba(124,106,247,0.25)' },
+}
 const PRIORITY_SHADOW = {
   high:   '0 0 0 1.5px rgba(248,113,113,0.5), 0 4px 20px rgba(248,113,113,0.15)',
   medium: '0 0 0 1.5px rgba(251,146,60,0.45), 0 4px 20px rgba(251,146,60,0.12)',
@@ -385,19 +394,25 @@ export default function Leads() {
                       )}
                     </div>
 
-                    {/* Row 4 — context preview */}
+                    {/* ── CONTEXT PREVIEW + NEXT ACTION CHIP ── */}
                     {(contextNote || nextActionLabel) && (
                       <div style={{ paddingTop:8, borderTop:'1px solid var(--border)' }}>
                         {contextNote && (
-                          <p style={{ fontSize:11, color:'var(--text3)', margin:0, marginBottom:nextActionLabel?3:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          <p style={{ fontSize:11, color:'var(--text3)', margin:0, marginBottom: lead.next_action ? 6 : 0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                             💬 {contextNote}
                           </p>
                         )}
-                        {nextActionLabel && (
-                          <p style={{ fontSize:11, fontWeight:700, color:'var(--accent2)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            👉 {nextActionLabel}{lead.next_follow_up_date ? ` · ${format(parseISO(lead.next_follow_up_date), 'dd MMM')}` : ''}
-                          </p>
-                        )}
+                        {lead.next_action && (() => {
+                          const cfg = NEXT_ACTION_CHIP[lead.next_action] || { label:'👉 '+lead.next_action.replace(/_/g,' '), bg:'rgba(124,106,247,0.1)', color:'#9d8fff', border:'rgba(124,106,247,0.2)' }
+                          let dateStr = null
+                          try { dateStr = lead.next_follow_up_date ? format(parseISO(lead.next_follow_up_date), 'dd MMM') : null } catch {}
+                          return (
+                            <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 11px', borderRadius:99, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}`, fontSize:11, fontWeight:700 }}>
+                              {cfg.label}
+                              {dateStr && <span style={{ opacity:0.75, fontWeight:500 }}>· {dateStr}</span>}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>
