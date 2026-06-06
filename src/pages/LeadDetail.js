@@ -63,6 +63,7 @@ export default function LeadDetail() {
   const [showNoteModal, setShowNoteModal] = useState(false)
   const [showMissedModal, setShowMissedModal] = useState(false)
   const [showReminderModal, setShowReminderModal] = useState(false)
+  const [showCallbackModal, setShowCallbackModal] = useState(false)
   const [showDemoModal, setShowDemoModal] = useState(false)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showScriptModal, setShowScriptModal] = useState(false)
@@ -356,6 +357,7 @@ export default function LeadDetail() {
             <button className="btn btn-ghost btn-sm" onClick={() => setShowCallModal(true)}><Plus size={12}/> Log Call</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowNoteModal(true)}>📝 Note</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowReminderModal(true)}>🔔 Remind</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowCallbackModal(true)} style={{ color: lead?.callback_scheduled_at ? 'var(--yellow)' : undefined }}>📞 {lead?.callback_scheduled_at ? 'Reschedule CB' : 'Callback'}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowDemoModal(true)}>🖥️ Demo</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowQuoteModal(true)}>💰 Quote</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowMissedModal(true)} style={{ color:'var(--red)' }}>📵 Missed</button>
@@ -929,6 +931,76 @@ export default function LeadDetail() {
           </div>
         </div>
       )}
+
+      {/* CALLBACK SCHEDULER */}
+      {showCallbackModal && lead && (() => {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const current = lead.callback_scheduled_at ? new Date(lead.callback_scheduled_at) : null
+        const [cbDate, setCbDate] = React.useState(current ? current.toISOString().split('T')[0] : '')
+        const [cbTime, setCbTime] = React.useState(current ? current.toTimeString().slice(0,5) : '10:00')
+        const [cbNote, setCbNote] = React.useState('')
+        const [cbSaving, setCbSaving] = React.useState(false)
+
+        async function saveCallback() {
+          if (!cbDate) { window.__toast && window.__toast('Pick a date', 'error'); return }
+          setCbSaving(true)
+          const scheduledAt = `${cbDate}T${cbTime || '10:00'}`
+          await supabase.from('leads').update({ callback_scheduled_at: scheduledAt, next_follow_up_date: cbDate, next_action: 'call' }).eq('id', lead.id)
+          if (cbNote) await supabase.from('lead_notes').insert({ lead_id: lead.id, note: `📞 Callback scheduled for ${format(new Date(scheduledAt), 'dd MMM, h:mm a')}${cbNote ? ' — ' + cbNote : ''}`, type: 'callback' })
+          setCbSaving(false)
+          window.__toast && window.__toast(`Callback set for ${format(new Date(scheduledAt), 'dd MMM, h:mm a')}`, 'success')
+          setShowCallbackModal(false)
+          fetchData()
+        }
+
+        async function removeCallback() {
+          await supabase.from('leads').update({ callback_scheduled_at: null }).eq('id', lead.id)
+          window.__toast && window.__toast('Callback removed', 'success')
+          setShowCallbackModal(false)
+          fetchData()
+        }
+
+        return (
+          <div className="modal-overlay" onClick={() => setShowCallbackModal(false)}>
+            <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>📞 Schedule Callback</h2>
+                <button className="btn-icon" onClick={() => setShowCallbackModal(false)} style={{ fontSize: 18 }}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-row" style={{ marginBottom: 12 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Date</label>
+                    <input type="date" className="form-input" min={todayStr} value={cbDate} onChange={e => setCbDate(e.target.value)}/>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Time</label>
+                    <input type="time" className="form-input" value={cbTime} onChange={e => setCbTime(e.target.value)}/>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
+                  {[{l:'Tomorrow',d:1},{l:'3 days',d:3},{l:'1 week',d:7},{l:'2 weeks',d:14}].map(o => {
+                    const d = new Date(); d.setDate(d.getDate()+o.d)
+                    const val = d.toISOString().split('T')[0]
+                    return <button key={o.l} onClick={()=>setCbDate(val)} style={{ padding:'5px 10px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', background:cbDate===val?'var(--accent-glow2)':'var(--bg3)', color:cbDate===val?'var(--accent2)':'var(--text3)', border:`1px solid ${cbDate===val?'var(--accent)':'var(--border)'}` }}>{o.l}</button>
+                  })}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Note (optional)</label>
+                  <input type="text" className="form-input" placeholder="e.g. Doctor back from audit" value={cbNote} onChange={e=>setCbNote(e.target.value)}/>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ justifyContent:'space-between' }}>
+                {lead.callback_scheduled_at && <button className="btn btn-danger btn-sm" onClick={removeCallback}>🗑 Remove</button>}
+                <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setShowCallbackModal(false)}>Cancel</button>
+                  <button className="btn btn-primary btn-sm" onClick={saveCallback} disabled={cbSaving}>{cbSaving?'Saving...':'Save Callback'}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

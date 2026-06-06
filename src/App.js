@@ -1,7 +1,7 @@
 /* eslint-disable */
 import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Bell, FileText, Download, Plus, Menu, X, MessageCircle, BarChart2, Zap } from 'lucide-react'
+import { LayoutDashboard, Users, Bell, FileText, Download, Plus, Menu, X, MessageCircle, BarChart2, Zap, PhoneCall } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Leads from './pages/Leads'
 import LeadDetail from './pages/LeadDetail'
@@ -11,18 +11,20 @@ import ImportLeads from './pages/ImportLeads'
 import WhatsAppTemplates from './pages/WhatsAppTemplates'
 import Analytics from './pages/Analytics'
 import AuditPage from './pages/AuditPage'
+import CallQueue from './pages/CallQueue'
 import Toast from './components/Toast'
 import GlobalSearch from './components/GlobalSearch'
 
 const NAV = [
-  { path: '/',          label: 'Dashboard',    icon: LayoutDashboard },
-  { path: '/leads',     label: 'All Leads',    icon: Users },
-  { path: '/reminders', label: "Today's Plan", icon: Bell },
-  { path: '/audit',     label: 'AI Audit',     icon: Zap },
-  { path: '/whatsapp',  label: 'WA Templates', icon: MessageCircle },
-  { path: '/scripts',   label: 'Call Scripts', icon: FileText },
-  { path: '/analytics', label: 'Analytics',    icon: BarChart2 },
-  { path: '/import',    label: 'Import Leads', icon: Download },
+  { path: '/',           label: 'Dashboard',    icon: LayoutDashboard },
+  { path: '/leads',      label: 'All Leads',    icon: Users },
+  { path: '/callqueue',  label: 'Call Queue',   icon: PhoneCall },
+  { path: '/reminders',  label: "Today's Plan", icon: Bell },
+  { path: '/audit',      label: 'AI Audit',     icon: Zap },
+  { path: '/whatsapp',   label: 'WA Templates', icon: MessageCircle },
+  { path: '/scripts',    label: 'Call Scripts', icon: FileText },
+  { path: '/analytics',  label: 'Analytics',    icon: BarChart2 },
+  { path: '/import',     label: 'Import Leads', icon: Download },
 ]
 
 function Layout() {
@@ -58,8 +60,7 @@ function Layout() {
               onClick={() => navTo(path)}>
               <Icon size={16} />
               {label}
-              {path === '/audit' && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--accent)', color: 'white', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>AI</span>}
-            </button>
+              {path === '/audit' && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--accent)', color: 'white', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>AI</span>}            </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -92,6 +93,7 @@ function Layout() {
             <Route path="/"           element={<Dashboard />} />
             <Route path="/leads"      element={<Leads />} />
             <Route path="/leads/:id"  element={<LeadDetail />} />
+            <Route path="/callqueue"  element={<CallQueue />} />
             <Route path="/reminders"  element={<Reminders />} />
             <Route path="/audit"      element={<AuditPage />} />
             <Route path="/whatsapp"   element={<WhatsAppTemplates />} />
