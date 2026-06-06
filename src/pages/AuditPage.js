@@ -20,9 +20,16 @@ const STATUS_CONFIG = {
 }
 
 async function callClaude(messages, systemPrompt) {
+  const apiKey = process.env.REACT_APP_ANTHROPIC_KEY
+  if (!apiKey) throw new Error("API key not configured. Add REACT_APP_ANTHROPIC_KEY in Vercel environment variables.")
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
       max_tokens: 1000,
@@ -133,7 +140,7 @@ No markdown, no extra text. Return up to 5 businesses with real details.`
       setBusinesses(parsed.businesses || [])
       setStage("results")
     } catch (e) {
-      setError("Search failed. Please try again.")
+      setError(e.message.includes("API key") ? "⚠️ API key not configured — add REACT_APP_ANTHROPIC_KEY in Vercel settings." : "Search failed. Please try again.")
     } finally {
       setLoading(false)
     }
