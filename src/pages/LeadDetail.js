@@ -100,7 +100,7 @@ export default function LeadDetail() {
     setLoading(true)
     const [l, c, n, r, s, w] = await Promise.all([
       supabase.from('leads').select('*').eq('id', id).single(),
-      supabase.from('call_logs').select('*').eq('lead_id', id).order('called_at', { ascending: true }),
+      supabase.from('call_logs').select('*').eq('lead_id', id).order('called_at', { ascending: false }),
       supabase.from('lead_notes').select('*').eq('lead_id', id).order('created_at', { ascending: false }),
       supabase.from('reminders').select('*').eq('lead_id', id).eq('status', 'pending').order('remind_at'),
       supabase.from('call_scripts').select('*').eq('is_active', true),
@@ -322,9 +322,9 @@ export default function LeadDetail() {
   const timeline = [
     ...callLogs.map(c => ({ ...c, _type: 'call', _date: new Date(c.called_at) })),
     ...leadNotes.map(n => ({ ...n, _type: 'note', _date: new Date(n.created_at) })),
-  ].sort((a, b) => a._date - b._date)
+  ].sort((a, b) => b._date - a._date)
 
-  const latestCall = callLogs[callLogs.length - 1]
+  const latestCall = callLogs[0]
   const nextSuggestion = latestCall ? NEXT_ACTION_MAP[latestCall.outcome] : null
   const stageIndex = STAGE_FLOW.findIndex(s => s.key === lead?.status)
 
@@ -558,7 +558,7 @@ export default function LeadDetail() {
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:8 }}>
                           <div>
                             <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-                              <span style={{ fontWeight:700, fontSize:13 }}>Call {callLogs.findIndex(c => c.id === item.id) + 1}</span>
+                              <span style={{ fontWeight:700, fontSize:13 }}>Call {callLogs.length - callLogs.findIndex(c => c.id === item.id)}</span>
                               <OutcomeBadge outcome={item.outcome} />
                               {item.duration_minutes && <span style={{ fontSize:11, color:'var(--text3)', background:'var(--bg3)', padding:'2px 7px', borderRadius:99 }}>⏱ {item.duration_minutes}m</span>}
                             </div>
