@@ -64,6 +64,8 @@ export default function LeadDetail() {
   const [showMissedModal, setShowMissedModal] = useState(false)
   const [showReminderModal, setShowReminderModal] = useState(false)
   const [showCallbackModal, setShowCallbackModal] = useState(false)
+  const [showMoreActions, setShowMoreActions] = useState(false)
+  const [showStatusExpanded, setShowStatusExpanded] = useState(false)
   const [showDemoModal, setShowDemoModal] = useState(false)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showScriptModal, setShowScriptModal] = useState(false)
@@ -341,9 +343,9 @@ export default function LeadDetail() {
           <button className="btn-icon" onClick={() => setShowEditModal(true)}><Edit2 size={15} /></button>
         </div>
 
-        {/* ACTION BUTTONS — 2 clean rows */}
+        {/* ACTION BUTTONS */}
         <div style={{ marginTop:14, paddingTop:14, borderTop:'1px solid var(--border)' }}>
-          {/* Row 1: Primary actions */}
+          {/* Row 1: Primary */}
           <div style={{ display:'flex', gap:8, marginBottom:8 }}>
             <a href={`tel:${lead.phone}`} className="btn btn-primary" style={{ flex:1, justifyContent:'center', fontSize:14, padding:'11px' }}>
               <Phone size={14}/> Call
@@ -352,47 +354,76 @@ export default function LeadDetail() {
               <MessageCircle size={14}/> WhatsApp
             </a>
           </div>
-          {/* Row 2: Secondary actions */}
-          <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowCallModal(true)}><Plus size={12}/> Log Call</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowNoteModal(true)}>📝 Note</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowReminderModal(true)}>🔔 Remind</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowCallbackModal(true)} style={{ color: lead?.callback_scheduled_at ? 'var(--yellow)' : undefined }}>📞 {lead?.callback_scheduled_at ? 'Reschedule CB' : 'Callback'}</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowDemoModal(true)}>🖥️ Demo</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowQuoteModal(true)}>💰 Quote</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowMissedModal(true)} style={{ color:'var(--red)' }}>📵 Missed</button>
-            {lead.demo_link && (
-              <a href={`https://wa.me/91${lead.phone}?text=${encodeURIComponent(`Hi ${lead.doctor_name ? `Dr. ${lead.doctor_name.split(' ').pop()}` : 'Doctor'} 🙏\n\nAs discussed, here is the demo website we built for *${lead.clinic_name}*:\n${lead.demo_link}\n\nThis is exactly the kind of website we'll build for you — customised with your branding, services & booking system.\n\nLet me know your thoughts! — Agastya | AgastyaOne`)}`}
-                target="_blank" rel="noreferrer"
-                style={{ fontSize:11, padding:'5px 10px', borderRadius:99, background:'#dcfce7', color:'#16a34a', border:'1px solid rgba(22,163,74,0.3)', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
-                📤 Send Demo
-              </a>
-            )}
-            <button
-              onClick={async () => {
-                const flag = !lead.partner_approval_needed
-                await supabase.from('leads').update({ partner_approval_needed: flag }).eq('id', id)
-                setLead(p => ({ ...p, partner_approval_needed: flag }))
-                window.__toast && window.__toast(flag ? '🤝 Flagged: needs partner approval' : 'Partner flag removed', 'success')
-              }}
-              style={{ fontSize:11, padding:'5px 10px', borderRadius:99, background: lead.partner_approval_needed ? 'var(--yellow-bg)' : 'var(--bg3)', color: lead.partner_approval_needed ? 'var(--yellow)' : 'var(--text3)', border:`1px solid ${lead.partner_approval_needed ? 'rgba(217,119,6,0.3)' : 'var(--border)'}`, fontWeight:700, cursor:'pointer' }}>
-              🤝 {lead.partner_approval_needed ? 'Needs Partner ✓' : 'Partner?'}
+          {/* Row 2: Secondary — compact icons with labels */}
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => setShowCallModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1px solid var(--border)', color:'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <Plus size={13}/> Log Call
+            </button>
+            <button onClick={() => setShowNoteModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1px solid var(--border)', color:'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <span style={{ fontSize:13 }}>📝</span> Note
+            </button>
+            <button onClick={() => setShowCallbackModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background: lead?.callback_scheduled_at ? 'var(--yellow-bg)' : 'var(--bg3)', border:`1px solid ${lead?.callback_scheduled_at ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, color: lead?.callback_scheduled_at ? 'var(--yellow)' : 'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <span style={{ fontSize:13 }}>📞</span> Callback
+            </button>
+            <button onClick={() => setShowMissedModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1px solid var(--border)', color:'var(--red)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <span style={{ fontSize:13 }}>📵</span> Missed
+            </button>
+            {/* ⋯ More */}
+            <button onClick={() => setShowMoreActions(p => !p)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background: showMoreActions ? 'var(--accent-glow2)' : 'var(--bg3)', border:`1px solid ${showMoreActions ? 'var(--accent)' : 'var(--border)'}`, color: showMoreActions ? 'var(--accent2)' : 'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <span style={{ fontSize:13 }}>⋯</span> More
             </button>
           </div>
+          {/* Expanded more actions */}
+          {showMoreActions && (
+            <div style={{ marginTop:8, padding:'10px 12px', background:'var(--bg3)', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', display:'flex', gap:6, flexWrap:'wrap' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowReminderModal(true)}>🔔 Remind</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowDemoModal(true)}>🖥️ Demo</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowQuoteModal(true)}>💰 Quote</button>
+              {lead.demo_link && (
+                <a href={`https://wa.me/91${lead.phone}?text=${encodeURIComponent(`Hi ${lead.doctor_name ? `Dr. ${lead.doctor_name.split(' ').pop()}` : 'Doctor'} 🙏\n\nAs discussed, here is the demo website we built for *${lead.clinic_name}*:\n${lead.demo_link}\n\nThis is exactly the kind of website we'll build for you — customised with your branding, services & booking system.\n\nLet me know your thoughts! — Agastya | AgastyaOne`)}`}
+                  target="_blank" rel="noreferrer"
+                  style={{ fontSize:11, padding:'5px 10px', borderRadius:99, background:'#dcfce7', color:'#16a34a', border:'1px solid rgba(22,163,74,0.3)', fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+                  📤 Send Demo
+                </a>
+              )}
+              <button
+                onClick={async () => {
+                  const flag = !lead.partner_approval_needed
+                  await supabase.from('leads').update({ partner_approval_needed: flag }).eq('id', id)
+                  setLead(p => ({ ...p, partner_approval_needed: flag }))
+                  window.__toast && window.__toast(flag ? '🤝 Flagged: needs partner approval' : 'Partner flag removed', 'success')
+                }}
+                style={{ fontSize:11, padding:'5px 10px', borderRadius:99, background: lead.partner_approval_needed ? 'var(--yellow-bg)' : 'var(--bg3)', color: lead.partner_approval_needed ? 'var(--yellow)' : 'var(--text3)', border:`1px solid ${lead.partner_approval_needed ? 'rgba(217,119,6,0.3)' : 'var(--border)'}`, fontWeight:700, cursor:'pointer' }}>
+                🤝 {lead.partner_approval_needed ? 'Needs Partner ✓' : 'Partner?'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── COMPACT STATUS CHANGER ── */}
-      <div className="card" style={{ marginBottom:12 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:10 }}>Update Status</div>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {['called','interested','future_interested','demo_sent','quote_sent','negotiating','closed','dead'].map(s => (
-            <button key={s} onClick={() => updateStatus(s)} disabled={updatingStatus}
-              style={{ fontSize:11, padding:'5px 10px', borderRadius:99, border:`1.5px solid ${lead.status===s?'var(--accent)':'var(--border)'}`, background: lead.status===s?'var(--accent)':'var(--bg2)', color: lead.status===s?'white':'var(--text2)', fontWeight: lead.status===s?700:400, cursor:'pointer', transition:'all 0.15s' }}>
-              {STATUS_EMOJI[s]} {s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
-            </button>
-          ))}
+      {/* ── STATUS CHANGER — inline collapsed ── */}
+      <div className="card" style={{ marginBottom:12, padding:'12px 16px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: showStatusExpanded ? 10 : 0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.4px' }}>Status</span>
+            <span style={{ fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, background:'var(--accent)', color:'white' }}>
+              {STATUS_EMOJI[lead.status]} {lead.status?.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
+            </span>
+          </div>
+          <button onClick={() => setShowStatusExpanded(p=>!p)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+            {showStatusExpanded ? '▲ Less' : '▼ Change'}
+          </button>
         </div>
+        {showStatusExpanded && (
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {['called','interested','future_interested','demo_sent','quote_sent','negotiating','closed','dead'].map(s => (
+              <button key={s} onClick={() => { updateStatus(s); setShowStatusExpanded(false) }} disabled={updatingStatus}
+                style={{ fontSize:11, padding:'5px 10px', borderRadius:99, border:`1.5px solid ${lead.status===s?'var(--accent)':'var(--border)'}`, background: lead.status===s?'var(--accent)':'var(--bg2)', color: lead.status===s?'white':'var(--text2)', fontWeight: lead.status===s?700:400, cursor:'pointer', transition:'all 0.15s' }}>
+                {STATUS_EMOJI[s]} {s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── NEXT STEP SUGGESTION ── */}
