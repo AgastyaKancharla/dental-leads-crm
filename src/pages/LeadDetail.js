@@ -64,8 +64,57 @@ export default function LeadDetail() {
   const [showMissedModal, setShowMissedModal] = useState(false)
   const [showReminderModal, setShowReminderModal] = useState(false)
   const [showCallbackModal, setShowCallbackModal] = useState(false)
+  const [cbDate, setCbDate] = useState('')
+  const [cbTime, setCbTime] = useState('10:00')
+  const [cbNote, setCbNote] = useState('')
+  const [cbSaving, setCbSaving] = useState(false)
   const [showMoreActions, setShowMoreActions] = useState(false)
   const [showStatusExpanded, setShowStatusExpanded] = useState(false)
+
+  function openCallbackModal() {
+    if (lead?.callback_scheduled_at) {
+      const d = new Date(lead.callback_scheduled_at)
+      setCbDate(d.toISOString().split('T')[0])
+      setCbTime(d.toTimeString().slice(0,5))
+    } else {
+      setCbDate('')
+      setCbTime('10:00')
+    }
+    setCbNote('')
+    setShowCallbackModal(true)
+  }
+
+  async function saveCallback() {
+    if (!cbDate) { window.__toast && window.__toast('Pick a date', 'error'); return }
+    setCbSaving(true)
+    const scheduledAt = `${cbDate}T${cbTime || '10:00'}:00`
+    await supabase.from('leads').update({
+      callback_scheduled_at: scheduledAt,
+      next_follow_up_date: cbDate,
+      next_action: 'call',
+    }).eq('id', id)
+    await supabase.from('lead_notes').insert({
+      lead_id: id,
+      note: `📞 Callback scheduled for ${format(new Date(scheduledAt), 'dd MMM yyyy, h:mm a')}${cbNote ? ' — ' + cbNote : ''}`,
+      type: 'callback',
+    })
+    setCbSaving(false)
+    window.__toast && window.__toast(`Callback set for ${format(new Date(scheduledAt), 'dd MMM, h:mm a')}`, 'success')
+    setShowCallbackModal(false)
+    fetchData()
+  }
+
+  async function removeCallback() {
+    await supabase.from('leads').update({ callback_scheduled_at: null }).eq('id', id)
+    await supabase.from('lead_notes').insert({
+      lead_id: id,
+      note: `🗑️ Callback removed`,
+      type: 'note',
+    })
+    window.__toast && window.__toast('Callback removed', 'success')
+    setShowCallbackModal(false)
+    fetchData()
+  }
   const [showDemoModal, setShowDemoModal] = useState(false)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showScriptModal, setShowScriptModal] = useState(false)
@@ -381,7 +430,7 @@ export default function LeadDetail() {
             <button onClick={() => setShowNoteModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1px solid var(--border)', color:'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
               <span style={{ fontSize:13 }}>📝</span> Note
             </button>
-            <button onClick={() => setShowCallbackModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background: lead?.callback_scheduled_at ? 'var(--yellow-bg)' : 'var(--bg3)', border:`1px solid ${lead?.callback_scheduled_at ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, color: lead?.callback_scheduled_at ? 'var(--yellow)' : 'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+            <button onClick={() => openCallbackModal()} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background: lead?.callback_scheduled_at ? 'var(--yellow-bg)' : 'var(--bg3)', border:`1px solid ${lead?.callback_scheduled_at ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, color: lead?.callback_scheduled_at ? 'var(--yellow)' : 'var(--text2)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
               <span style={{ fontSize:13 }}>📞</span> Callback
             </button>
             <button onClick={() => setShowMissedModal(true)} style={{ flex:1, padding:'8px 4px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1px solid var(--border)', color:'var(--red)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
@@ -1004,75 +1053,64 @@ export default function LeadDetail() {
         </div>
       )}
 
-      {/* CALLBACK SCHEDULER */}
-      {showCallbackModal && lead && (() => {
-        const todayStr = new Date().toISOString().split('T')[0]
-        const current = lead.callback_scheduled_at ? new Date(lead.callback_scheduled_at) : null
-        const [cbDate, setCbDate] = React.useState(current ? current.toISOString().split('T')[0] : '')
-        const [cbTime, setCbTime] = React.useState(current ? current.toTimeString().slice(0,5) : '10:00')
-        const [cbNote, setCbNote] = React.useState('')
-        const [cbSaving, setCbSaving] = React.useState(false)
-
-        async function saveCallback() {
-          if (!cbDate) { window.__toast && window.__toast('Pick a date', 'error'); return }
-          setCbSaving(true)
-          const scheduledAt = `${cbDate}T${cbTime || '10:00'}`
-          await supabase.from('leads').update({ callback_scheduled_at: scheduledAt, next_follow_up_date: cbDate, next_action: 'call' }).eq('id', lead.id)
-          if (cbNote) await supabase.from('lead_notes').insert({ lead_id: lead.id, note: `📞 Callback scheduled for ${format(new Date(scheduledAt), 'dd MMM, h:mm a')}${cbNote ? ' — ' + cbNote : ''}`, type: 'callback' })
-          setCbSaving(false)
-          window.__toast && window.__toast(`Callback set for ${format(new Date(scheduledAt), 'dd MMM, h:mm a')}`, 'success')
-          setShowCallbackModal(false)
-          fetchData()
-        }
-
-        async function removeCallback() {
-          await supabase.from('leads').update({ callback_scheduled_at: null }).eq('id', lead.id)
-          window.__toast && window.__toast('Callback removed', 'success')
-          setShowCallbackModal(false)
-          fetchData()
-        }
-
-        return (
-          <div className="modal-overlay" onClick={() => setShowCallbackModal(false)}>
-            <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>📞 Schedule Callback</h2>
-                <button className="btn-icon" onClick={() => setShowCallbackModal(false)} style={{ fontSize: 18 }}>×</button>
-              </div>
-              <div className="modal-body">
-                <div className="form-row" style={{ marginBottom: 12 }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Date</label>
-                    <input type="date" className="form-input" min={todayStr} value={cbDate} onChange={e => setCbDate(e.target.value)}/>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Time</label>
-                    <input type="time" className="form-input" value={cbTime} onChange={e => setCbTime(e.target.value)}/>
-                  </div>
+      {/* CALLBACK SCHEDULER MODAL */}
+      {showCallbackModal && (
+        <div className="modal-overlay" onClick={() => setShowCallbackModal(false)}>
+          <div className="modal" style={{ maxWidth:420 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📞 {lead?.callback_scheduled_at ? 'Edit Callback' : 'Schedule Callback'}</h2>
+              <button className="btn-icon" onClick={() => setShowCallbackModal(false)} style={{ fontSize:18 }}>×</button>
+            </div>
+            <div className="modal-body">
+              {lead?.callback_scheduled_at && (
+                <div style={{ background:'var(--yellow-bg)', border:'1px solid rgba(251,191,36,0.2)', borderRadius:'var(--radius-sm)', padding:'8px 12px', marginBottom:14, fontSize:12, color:'var(--yellow)', fontWeight:600 }}>
+                  🔔 Currently scheduled: {format(new Date(lead.callback_scheduled_at), 'dd MMM yyyy, h:mm a')}
                 </div>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
-                  {[{l:'Tomorrow',d:1},{l:'3 days',d:3},{l:'1 week',d:7},{l:'2 weeks',d:14}].map(o => {
-                    const d = new Date(); d.setDate(d.getDate()+o.d)
-                    const val = d.toISOString().split('T')[0]
-                    return <button key={o.l} onClick={()=>setCbDate(val)} style={{ padding:'5px 10px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', background:cbDate===val?'var(--accent-glow2)':'var(--bg3)', color:cbDate===val?'var(--accent2)':'var(--text3)', border:`1px solid ${cbDate===val?'var(--accent)':'var(--border)'}` }}>{o.l}</button>
-                  })}
+              )}
+              <div className="form-row" style={{ marginBottom:12 }}>
+                <div className="form-group" style={{ marginBottom:0 }}>
+                  <label className="form-label">Date</label>
+                  <input type="date" className="form-input" min={new Date().toISOString().split('T')[0]} value={cbDate} onChange={e => setCbDate(e.target.value)}/>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Note (optional)</label>
-                  <input type="text" className="form-input" placeholder="e.g. Doctor back from audit" value={cbNote} onChange={e=>setCbNote(e.target.value)}/>
+                <div className="form-group" style={{ marginBottom:0 }}>
+                  <label className="form-label">Time</label>
+                  <input type="time" className="form-input" value={cbTime} onChange={e => setCbTime(e.target.value)}/>
                 </div>
               </div>
-              <div className="modal-footer" style={{ justifyContent:'space-between' }}>
-                {lead.callback_scheduled_at && <button className="btn btn-danger btn-sm" onClick={removeCallback}>🗑 Remove</button>}
-                <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowCallbackModal(false)}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" onClick={saveCallback} disabled={cbSaving}>{cbSaving?'Saving...':'Save Callback'}</button>
-                </div>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
+                {[{l:'Tomorrow',d:1},{l:'3 days',d:3},{l:'1 week',d:7},{l:'2 weeks',d:14}].map(o => {
+                  const d = new Date(); d.setDate(d.getDate()+o.d)
+                  const val = d.toISOString().split('T')[0]
+                  return (
+                    <button key={o.l} type="button" onClick={() => setCbDate(val)}
+                      style={{ padding:'5px 10px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
+                        background: cbDate===val ? 'var(--accent-glow2)' : 'var(--bg3)',
+                        color: cbDate===val ? 'var(--accent2)' : 'var(--text3)',
+                        border: `1px solid ${cbDate===val ? 'var(--accent)' : 'var(--border)'}` }}>
+                      {o.l}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Note (optional)</label>
+                <input type="text" className="form-input" placeholder="e.g. Doctor back from audit, call after 5pm" value={cbNote} onChange={e => setCbNote(e.target.value)}/>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ justifyContent:'space-between' }}>
+              {lead?.callback_scheduled_at && (
+                <button className="btn btn-danger btn-sm" onClick={removeCallback}>🗑 Remove</button>
+              )}
+              <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowCallbackModal(false)}>Cancel</button>
+                <button className="btn btn-primary btn-sm" onClick={saveCallback} disabled={cbSaving}>
+                  {cbSaving ? 'Saving...' : lead?.callback_scheduled_at ? 'Update Callback' : 'Schedule Callback'}
+                </button>
               </div>
             </div>
           </div>
-        )
-      })()}
+        </div>
+      )}
     </div>
   )
 }
