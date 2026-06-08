@@ -73,7 +73,7 @@ export default function LeadDetail() {
 
   // Forms
   const today = new Date().toISOString().split('T')[0]
-  const [callForm, setCallForm] = useState({ outcome:'interested', duration_minutes:'', notes:'', next_follow_up_date:'', next_action:'call', called_at:'' })
+  const [callForm, setCallForm] = useState({ outcome:'interested', duration_minutes:'', notes:'', next_follow_up_date:'', next_action:'call', called_at:'', callback_time:'10:00' })
 
   // Auto-suggest follow-up date when outcome changes
   function handleOutcomeChange(outcome) {
@@ -168,6 +168,10 @@ export default function LeadDetail() {
       next_action: callForm.next_action || null, transcript: transcript || null, called_at: calledAt,
     })
     const statusMap = { interested:'interested', future_interested:'future_interested', callback:'called', not_interested:'dead', no_answer:'called', missed:'missed', demo_requested:'demo_sent', quote_sent:'quote_sent', closed:'closed' }
+    const isCallback = callForm.outcome === 'callback'
+    const callbackAt = isCallback && callForm.next_follow_up_date
+      ? `${callForm.next_follow_up_date}T${callForm.callback_time || '10:00'}`
+      : null
     await supabase.from('leads').update({
       status: statusMap[callForm.outcome] || lead.status,
       next_follow_up_date: callForm.next_follow_up_date || null,
@@ -175,6 +179,7 @@ export default function LeadDetail() {
       last_call_notes: callForm.notes || null,
       last_called_at: calledAt,
       call_count: (lead.call_count || 0) + 1,
+      ...(isCallback && callbackAt ? { callback_scheduled_at: callbackAt } : {}),
     }).eq('id', id)
     // ── Log next action to timeline ──
     if (callForm.next_action) {
@@ -188,7 +193,7 @@ export default function LeadDetail() {
       })
     }
     setSaving(false); setShowCallModal(false)
-    setCallForm({ outcome:'interested', duration_minutes:'', notes:'', next_follow_up_date:'', next_action:'call', called_at:'' })
+    setCallForm({ outcome:'interested', duration_minutes:'', notes:'', next_follow_up_date:'', next_action:'call', called_at:'', callback_time:'10:00' })
     setAudioFile(null); fetchAll()
     window.__toast && window.__toast('Call logged!', 'success')
   }
@@ -748,10 +753,32 @@ export default function LeadDetail() {
                   <input type="datetime-local" className="form-input" max={new Date().toISOString().slice(0,16)} value={callForm.called_at} onChange={e => setCallForm(f => ({ ...f, called_at:e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">📅 Next Follow Up</label>
+                  <label className="form-label">{callForm.outcome === 'callback' ? '📅 Callback Date' : '📅 Next Follow Up'}</label>
                   <input type="date" className="form-input" min={today} value={callForm.next_follow_up_date} onChange={e => setCallForm(f => ({ ...f, next_follow_up_date:e.target.value }))} />
                 </div>
               </div>
+              {callForm.outcome === 'callback' && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">🕐 Callback Time</label>
+                    <input type="time" className="form-input" value={callForm.callback_time} onChange={e => setCallForm(f => ({ ...f, callback_time:e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Quick Pick</label>
+                    <div style={{ display:'flex', gap:5, flexWrap:'wrap', paddingTop:4 }}>
+                      {[{l:'Tomorrow',d:1},{l:'3 days',d:3},{l:'1 week',d:7}].map(o => {
+                        const d = new Date(); d.setDate(d.getDate()+o.d)
+                        const val = d.toISOString().split('T')[0]
+                        return <button key={o.l} type="button" onClick={()=>setCallForm(f=>({...f,next_follow_up_date:val}))}
+                          style={{ padding:'4px 8px', borderRadius:99, fontSize:10, fontWeight:600, cursor:'pointer',
+                            background:callForm.next_follow_up_date===val?'var(--accent-glow2)':'var(--bg3)',
+                            color:callForm.next_follow_up_date===val?'var(--accent2)':'var(--text3)',
+                            border:`1px solid ${callForm.next_follow_up_date===val?'var(--accent)':'var(--border)'}` }}>{o.l}</button>
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Next Action</label>
                 <select className="form-input" value={callForm.next_action} onChange={e => setCallForm(f => ({ ...f, next_action:e.target.value }))}>
