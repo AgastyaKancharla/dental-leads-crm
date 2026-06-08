@@ -74,8 +74,11 @@ export default function LeadDetail() {
   function openCallbackModal() {
     if (lead?.callback_scheduled_at) {
       const d = new Date(lead.callback_scheduled_at)
-      setCbDate(d.toISOString().split('T')[0])
-      setCbTime(d.toTimeString().slice(0,5))
+      // Use local date/time so user sees what they originally set
+      const localDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      const localTime = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+      setCbDate(localDate)
+      setCbTime(localTime)
     } else {
       setCbDate('')
       setCbTime('10:00')
@@ -87,7 +90,8 @@ export default function LeadDetail() {
   async function saveCallback() {
     if (!cbDate) { window.__toast && window.__toast('Pick a date', 'error'); return }
     setCbSaving(true)
-    const scheduledAt = `${cbDate}T${cbTime || '10:00'}:00`
+    // Append IST offset so Supabase stores correct UTC
+    const scheduledAt = `${cbDate}T${cbTime || '10:00'}:00+05:30`
     await supabase.from('leads').update({
       callback_scheduled_at: scheduledAt,
       next_follow_up_date: cbDate,
@@ -219,7 +223,7 @@ export default function LeadDetail() {
     const statusMap = { interested:'interested', future_interested:'future_interested', callback:'called', not_interested:'dead', no_answer:'called', missed:'missed', demo_requested:'demo_sent', quote_sent:'quote_sent', closed:'closed' }
     const isCallback = callForm.outcome === 'callback'
     const callbackAt = isCallback && callForm.next_follow_up_date
-      ? `${callForm.next_follow_up_date}T${callForm.callback_time || '10:00'}`
+      ? `${callForm.next_follow_up_date}T${callForm.callback_time || '10:00'}:00+05:30`
       : null
     await supabase.from('leads').update({
       status: statusMap[callForm.outcome] || lead.status,

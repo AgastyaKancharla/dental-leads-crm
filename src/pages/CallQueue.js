@@ -84,14 +84,20 @@ function QuickLogModal({ lead, onDone, onClose }) {
 function RescheduleModal({ lead, onSave, onClose }) {
   const today = new Date().toISOString().split('T')[0]
   const current = lead.callback_scheduled_at ? new Date(lead.callback_scheduled_at) : new Date()
-  const [date, setDate] = useState(current.toISOString().split('T')[0])
-  const [time, setTime] = useState(current.toTimeString().slice(0, 5))
+  const [date, setDate] = useState(() => {
+    const d = current
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })
+  const [time, setTime] = useState(() => {
+    const d = current
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  })
   const [saving, setSaving] = useState(false)
 
   async function save() {
     if (!date) { window.__toast && window.__toast('Pick a date', 'error'); return }
     setSaving(true)
-    const scheduledAt = `${date}T${time || '10:00'}`
+    const scheduledAt = `${date}T${time || '10:00'}:00+05:30`
     await supabase.from('leads').update({
       callback_scheduled_at: scheduledAt,
       next_follow_up_date: date,
