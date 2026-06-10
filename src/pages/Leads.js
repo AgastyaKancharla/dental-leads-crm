@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { StatusBadge, PriorityBadge } from '../components/Badges'
@@ -113,15 +113,28 @@ function CallbackModal({ lead, onSave, onClose }) {
 
 export default function Leads() {
   const navigate = useNavigate()
+  const scrollRef = React.useRef(null)
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [priorityFilter, setPriorityFilter] = useState('')
-  const [areaFilter, setAreaFilter] = useState('')
-  const [hasWebsiteFilter, setHasWebsiteFilter] = useState('')
-  const [partnerFilter, setPartnerFilter] = useState('')
-  const [viewMode, setViewMode] = useState('cards')
+
+  // ── PERSISTENT FILTERS via sessionStorage ──
+  const [search, setSearch] = useState(() => sessionStorage.getItem('leads_search') || '')
+  const [statusFilter, setStatusFilter] = useState(() => sessionStorage.getItem('leads_status') || '')
+  const [priorityFilter, setPriorityFilter] = useState(() => sessionStorage.getItem('leads_priority') || '')
+  const [areaFilter, setAreaFilter] = useState(() => sessionStorage.getItem('leads_area') || '')
+  const [hasWebsiteFilter, setHasWebsiteFilter] = useState(() => sessionStorage.getItem('leads_website') || '')
+  const [partnerFilter, setPartnerFilter] = useState(() => sessionStorage.getItem('leads_partner') || '')
+  const [viewMode, setViewMode] = useState(() => sessionStorage.getItem('leads_viewMode') || 'cards')
+
+  // Persist filter changes to sessionStorage
+  useEffect(() => { sessionStorage.setItem('leads_search', search) }, [search])
+  useEffect(() => { sessionStorage.setItem('leads_status', statusFilter) }, [statusFilter])
+  useEffect(() => { sessionStorage.setItem('leads_priority', priorityFilter) }, [priorityFilter])
+  useEffect(() => { sessionStorage.setItem('leads_area', areaFilter) }, [areaFilter])
+  useEffect(() => { sessionStorage.setItem('leads_website', hasWebsiteFilter) }, [hasWebsiteFilter])
+  useEffect(() => { sessionStorage.setItem('leads_partner', partnerFilter) }, [partnerFilter])
+  useEffect(() => { sessionStorage.setItem('leads_viewMode', viewMode) }, [viewMode])
+
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_LEAD)
   const [saving, setSaving] = useState(false)
@@ -144,6 +157,25 @@ export default function Leads() {
   }, [])
 
   useEffect(() => { setShowBulkBar(selected.size > 0) }, [selected])
+
+  // ── RESTORE SCROLL POSITION on back navigation ──
+  useEffect(() => {
+    const saved = sessionStorage.getItem('leads_scrollY')
+    if (saved) {
+      const pageBody = document.querySelector('.page-body')
+      if (pageBody) {
+        setTimeout(() => { pageBody.scrollTop = parseInt(saved) }, 100)
+      }
+      sessionStorage.removeItem('leads_scrollY')
+    }
+  }, [loading])
+
+  function navigateToLead(id) {
+    // Save scroll position before leaving
+    const pageBody = document.querySelector('.page-body')
+    if (pageBody) sessionStorage.setItem('leads_scrollY', pageBody.scrollTop)
+    navigate(`/leads/${id}`)
+  }
 
   async function fetchLeads() {
     setLoading(true)
@@ -342,7 +374,7 @@ export default function Leads() {
             const nextActionLabel = lead.next_action ? lead.next_action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : null
 
             return (
-              <div key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)}
+              <div key={lead.id} onClick={()=>navigateToLead(lead.id)}
                 style={{ background:'var(--bg2)', border:`1.5px solid ${borderColor}`, borderRadius:'var(--radius)', padding:'14px 16px', cursor:'pointer', boxShadow:cardShadow, transition:'all 0.18s ease' }}
                 onMouseEnter={e=>{ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.boxShadow='var(--shadow-glow)' }}
                 onMouseLeave={e=>{ e.currentTarget.style.borderColor=borderColor; e.currentTarget.style.boxShadow=cardShadow }}
@@ -456,7 +488,7 @@ export default function Leads() {
                 const isSelected = selected.has(lead.id)
                 const priority = lead.priority || 'medium'
                 return (
-                  <tr key={lead.id} onClick={()=>navigate(`/leads/${lead.id}`)} style={{ cursor:'pointer', background:isSelected?'var(--accent-glow)':'transparent', borderLeft:`3px solid ${PRIORITY_BORDER[priority]||'transparent'}` }}>
+                  <tr key={lead.id} onClick={()=>navigateToLead(lead.id)} style={{ cursor:'pointer', background:isSelected?'var(--accent-glow)':'transparent', borderLeft:`3px solid ${PRIORITY_BORDER[priority]||'transparent'}` }}>
                     <td onClick={e=>e.stopPropagation()}>
                       <button style={{ background:'none', border:'none', cursor:'pointer' }} onClick={e=>toggleSelect(lead.id,e)}>
                         {isSelected?<CheckSquare size={14} color="var(--accent)"/>:<Square size={14} color="var(--text3)"/>}
