@@ -4,7 +4,7 @@ import React from 'react'
 const STATUS_LABELS = {
   new:'New', called:'Called', interested:'Interested',
   future_interested:'Future Interest', demo_sent:'Demo Sent',
-  quote_sent:'Quote Sent', negotiating:'Negotiating',
+  quote_sent:'Quote Sent', negotiating:'Negotiating', renovation:'🏗️ Renovation',
   closed:'Closed', dead:'Not Interested', missed:'Missed',
   not_reachable:'Not Reachable',
 }
@@ -21,7 +21,7 @@ export function StatusBadge({ status }) {
     future_interested:'badge-future', demo_sent:'badge-demo_sent',
     quote_sent:'badge-quote', negotiating:'badge-negotiating',
     closed:'badge-closed', dead:'badge-dead', missed:'badge-missed',
-    not_reachable:'badge-missed',
+    not_reachable:'badge-missed', renovation:'badge-renovation',
   }
   return <span className={`badge ${c[status]||'badge-new'}`}>{STATUS_LABELS[status]||status}</span>
 }

@@ -8,10 +8,10 @@ import LeadIntelligence from '../components/LeadIntelligence'
 import { Phone, MessageCircle, ArrowLeft, Plus, X, Mic, FileText, Bell, Star, Upload, ChevronDown, ChevronUp, Trash2, Edit2, ExternalLink, Copy, AlertTriangle, PhoneMissed, RefreshCw, StickyNote, Calendar } from 'lucide-react'
 import { format, parseISO, formatDistanceToNow } from 'date-fns'
 
-const STATUSES = ['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','closed','dead','missed']
+const STATUSES = ['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','renovation','closed','dead','missed']
 const OUTCOMES = ['interested','future_interested','callback','not_interested','no_answer','missed','demo_requested','quote_sent','closed','other']
 
-const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', closed:'✅', dead:'❌', missed:'📵' }
+const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', renovation:'🏗️', closed:'✅', dead:'❌', missed:'📵' }
 const OUTCOME_EMOJI = { interested:'😊', future_interested:'🔮', callback:'📞', not_interested:'❌', no_answer:'📵', missed:'📵', demo_requested:'🖥️', quote_sent:'💰', closed:'✅', other:'💬' }
 const OUTCOME_COLOR = { interested:'var(--green-bg)', future_interested:'rgba(14,165,233,0.1)', callback:'var(--yellow-bg)', not_interested:'var(--red-bg)', no_answer:'var(--bg3)', missed:'var(--red-bg)', demo_requested:'var(--purple-bg)', quote_sent:'rgba(168,85,247,0.1)', closed:'rgba(22,163,74,0.12)', other:'var(--bg3)' }
 
