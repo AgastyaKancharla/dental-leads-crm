@@ -488,7 +488,7 @@ export default function LeadDetail() {
         </div>
         {showStatusExpanded && (
           <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-            {['called','interested','future_interested','demo_sent','quote_sent','negotiating','closed','dead'].map(s => (
+            {STATUSES.map(s => (
               <button key={s} onClick={() => { updateStatus(s); setShowStatusExpanded(false) }} disabled={updatingStatus}
                 style={{ fontSize:11, padding:'5px 10px', borderRadius:99, border:`1.5px solid ${lead.status===s?'var(--accent)':'var(--border)'}`, background: lead.status===s?'var(--accent)':'var(--bg2)', color: lead.status===s?'white':'var(--text2)', fontWeight: lead.status===s?700:400, cursor:'pointer', transition:'all 0.15s' }}>
                 {STATUS_EMOJI[s]} {s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
