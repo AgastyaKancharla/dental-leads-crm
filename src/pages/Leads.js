@@ -7,7 +7,7 @@ import { Search, MessageCircle, X, Users, Plus, Phone, CheckSquare, Square, Bell
 import { format, parseISO, differenceInDays, isToday, isPast } from 'date-fns'
 import { generateLeadIntelligence } from '../lib/intelligence'
 
-const STATUSES = ['', 'new', 'called', 'interested', 'future_interested', 'demo_sent', 'quote_sent', 'negotiating', 'renovation', 'closed', 'dead', 'missed', 'not_reachable']
+const STATUSES = ['', 'new', 'called', 'interested', 'future_interested', 'demo_sent', 'quote_sent', 'negotiating', 'renovation', 'gatekeeper', 'closed', 'dead', 'missed', 'not_reachable']
 const PRIORITIES = ['', 'high', 'medium', 'low']
 const AREAS = ['', 'Koramangala', 'Indiranagar', 'Whitefield', 'HSR Layout', 'JP Nagar', 'Jayanagar', 'BTM Layout', 'Electronic City', 'Marathahalli', 'Bannerghatta Road', 'Yelahanka', 'Hebbal', 'Rajajinagar', 'Malleshwaram', 'RT Nagar', 'Other']
 const EMPTY_LEAD = { clinic_name:'', doctor_name:'', phone:'', area:'', rating:'', status:'new', priority:'medium', notes:'', next_follow_up_date:'', next_action:'', email:'', best_time_to_call:'', tags:'' }

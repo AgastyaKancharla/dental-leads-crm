@@ -4,10 +4,10 @@ import React from 'react'
 const STATUS_LABELS = {
   new:'New', called:'Called', interested:'Interested',
   future_interested:'Future Interest', demo_sent:'Demo Sent',
-  quote_sent:'Quote Sent', negotiating:'Negotiating', renovation:'🏗️ Renovation',
+  quote_sent:'Quote Sent', negotiating:'Negotiating', renovation:'🏗️ Renovation', gatekeeper:'🚧 Gatekeeper',
   closed:'Closed', dead:'Not Interested', missed:'Missed',
   not_reachable:'Not Reachable',
-  renovation:'Renovating',
+  renovation:'Renovating', gatekeeper:'Gatekeeper',
   out_of_city:'Out of City',
   partner_approval:'Partner Approval',
 }
@@ -25,9 +25,9 @@ export function StatusBadge({ status }) {
     quote_sent:'badge-quote', negotiating:'badge-negotiating',
     closed:'badge-closed', dead:'badge-dead', missed:'badge-missed',
     not_reachable:'badge-missed',
-    renovation:'badge-renovation',
+    renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
     out_of_city:'badge-future',
-    partner_approval:'badge-called', renovation:'badge-renovation',
+    partner_approval:'badge-called', renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
   }
   return <span className={`badge ${c[status]||'badge-new'}`}>{STATUS_LABELS[status]||status}</span>
 }
@@ -41,7 +41,7 @@ export function OutcomeBadge({ outcome }) {
     interested:'badge-interested', callback:'badge-called',
     not_interested:'badge-dead', no_answer:'badge-called',
     not_reachable:'badge-missed',
-    renovation:'badge-renovation',
+    renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
     out_of_city:'badge-future',
     partner_approval:'badge-called', demo_requested:'badge-demo_sent',
     closed:'badge-closed', missed:'badge-missed',

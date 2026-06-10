@@ -11,7 +11,7 @@ import { format, parseISO, formatDistanceToNow } from 'date-fns'
 const STATUSES = ['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','renovation','out_of_city','partner_approval','closed','dead','missed','not_reachable']
 const OUTCOMES = ['interested','future_interested','callback','not_interested','no_answer','missed','demo_requested','quote_sent','closed','other']
 
-const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', renovation:'🏗️', out_of_city:'✈️', partner_approval:'🤝', closed:'✅', dead:'❌', missed:'📵', not_reachable:'📵' }
+const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', renovation:'🏗️', gatekeeper:'🚧', out_of_city:'✈️', partner_approval:'🤝', closed:'✅', dead:'❌', missed:'📵', not_reachable:'📵' }
 const OUTCOME_EMOJI = { interested:'😊', future_interested:'🔮', callback:'📞', not_interested:'❌', no_answer:'📵', missed:'📵', demo_requested:'🖥️', quote_sent:'💰', closed:'✅', other:'💬' }
 const OUTCOME_COLOR = { interested:'var(--green-bg)', future_interested:'rgba(14,165,233,0.1)', callback:'var(--yellow-bg)', not_interested:'var(--red-bg)', no_answer:'var(--bg3)', missed:'var(--red-bg)', demo_requested:'var(--purple-bg)', quote_sent:'rgba(168,85,247,0.1)', closed:'rgba(22,163,74,0.12)', other:'var(--bg3)' }
 
