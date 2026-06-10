@@ -8,7 +8,7 @@ import LeadIntelligence from '../components/LeadIntelligence'
 import { Phone, MessageCircle, ArrowLeft, Plus, X, Mic, FileText, Bell, Star, Upload, ChevronDown, ChevronUp, Trash2, Edit2, ExternalLink, Copy, AlertTriangle, PhoneMissed, RefreshCw, StickyNote, Calendar } from 'lucide-react'
 import { format, parseISO, formatDistanceToNow } from 'date-fns'
 
-const STATUSES = ['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','renovation','out_of_city','partner_approval','closed','dead','missed','not_reachable']
+const STATUSES = ['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','renovation','gatekeeper','out_of_city','partner_approval','closed','dead','missed','not_reachable']
 const OUTCOMES = ['interested','future_interested','callback','not_interested','no_answer','missed','demo_requested','quote_sent','closed','other']
 
 const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', renovation:'🏗️', gatekeeper:'🚧', out_of_city:'✈️', partner_approval:'🤝', closed:'✅', dead:'❌', missed:'📵', not_reachable:'📵' }
