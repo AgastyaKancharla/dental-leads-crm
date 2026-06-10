@@ -7,6 +7,9 @@ const STATUS_LABELS = {
   quote_sent:'Quote Sent', negotiating:'Negotiating', renovation:'🏗️ Renovation',
   closed:'Closed', dead:'Not Interested', missed:'Missed',
   not_reachable:'Not Reachable',
+  renovation:'Renovating',
+  out_of_city:'Out of City',
+  partner_approval:'Partner Approval',
 }
 const OUTCOME_LABELS = {
   interested:'Interested', callback:'Callback', not_interested:'Not Interested',
@@ -21,7 +24,10 @@ export function StatusBadge({ status }) {
     future_interested:'badge-future', demo_sent:'badge-demo_sent',
     quote_sent:'badge-quote', negotiating:'badge-negotiating',
     closed:'badge-closed', dead:'badge-dead', missed:'badge-missed',
-    not_reachable:'badge-missed', renovation:'badge-renovation',
+    not_reachable:'badge-missed',
+    renovation:'badge-renovation',
+    out_of_city:'badge-future',
+    partner_approval:'badge-called', renovation:'badge-renovation',
   }
   return <span className={`badge ${c[status]||'badge-new'}`}>{STATUS_LABELS[status]||status}</span>
 }
@@ -34,7 +40,10 @@ export function OutcomeBadge({ outcome }) {
   const c = {
     interested:'badge-interested', callback:'badge-called',
     not_interested:'badge-dead', no_answer:'badge-called',
-    not_reachable:'badge-missed', demo_requested:'badge-demo_sent',
+    not_reachable:'badge-missed',
+    renovation:'badge-renovation',
+    out_of_city:'badge-future',
+    partner_approval:'badge-called', demo_requested:'badge-demo_sent',
     closed:'badge-closed', missed:'badge-missed',
     future_interested:'badge-future', quote_sent:'badge-quote', other:'badge-new',
   }
