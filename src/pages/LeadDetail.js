@@ -105,7 +105,7 @@ export default function LeadDetail() {
     setCbSaving(false)
     window.__toast && window.__toast(`Callback set for ${format(new Date(scheduledAt), 'dd MMM, h:mm a')}`, 'success')
     setShowCallbackModal(false)
-    fetchData()
+    fetchAll()
   }
 
   async function removeCallback() {
@@ -117,7 +117,7 @@ export default function LeadDetail() {
     })
     window.__toast && window.__toast('Callback removed', 'success')
     setShowCallbackModal(false)
-    fetchData()
+    fetchAll()
   }
   const [showDemoModal, setShowDemoModal] = useState(false)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
@@ -175,9 +175,14 @@ export default function LeadDetail() {
 
   async function updateStatus(s) {
     setUpdatingStatus(true)
-    await supabase.from('leads').update({ status: s }).eq('id', id)
-    setLead(p => ({ ...p, status: s }))
-    window.__toast && window.__toast(`Status → ${s.replace(/_/g,' ')}`, 'success')
+    const { error } = await supabase.from('leads').update({ status: s }).eq('id', id)
+    if (error) {
+      window.__toast && window.__toast('Failed to update status', 'error')
+      console.error('updateStatus error:', error)
+    } else {
+      setLead(p => ({ ...p, status: s }))
+      window.__toast && window.__toast(`Status → ${s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}`, 'success')
+    }
     setUpdatingStatus(false)
   }
 
