@@ -8,10 +8,8 @@ import LeadIntelligence from '../components/LeadIntelligence'
 import { Phone, MessageCircle, ArrowLeft, Plus, X, Mic, FileText, Bell, Star, Upload, ChevronDown, ChevronUp, Trash2, Edit2, ExternalLink, Copy, AlertTriangle, PhoneMissed, RefreshCw, StickyNote, Calendar } from 'lucide-react'
 import { format, parseISO, formatDistanceToNow } from 'date-fns'
 
-const STATUSES = ['new','called','interested','future_interested','demo_sent','quote_sent','negotiating','renovation','gatekeeper','out_of_city','partner_approval','closed','dead','missed','not_reachable']
-const OUTCOMES = ['interested','future_interested','callback','not_interested','no_answer','missed','demo_requested','quote_sent','closed','other']
+import { STATUS_KEYS as STATUSES, STATUS_EMOJI, STATUS_MAP as STATUS_MAP_IMPORTED, BUCKET_CLOSED } from '../lib/statuses'
 
-const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', renovation:'🏗️', gatekeeper:'🚧', out_of_city:'✈️', partner_approval:'🤝', closed:'✅', dead:'❌', missed:'📵', not_reachable:'📵' }
 const OUTCOME_EMOJI = { interested:'😊', future_interested:'🔮', callback:'📞', not_interested:'❌', no_answer:'📵', missed:'📵', demo_requested:'🖥️', quote_sent:'💰', closed:'✅', other:'💬' }
 const OUTCOME_COLOR = { interested:'var(--green-bg)', future_interested:'rgba(14,165,233,0.1)', callback:'var(--yellow-bg)', not_interested:'var(--red-bg)', no_answer:'var(--bg3)', missed:'var(--red-bg)', demo_requested:'var(--purple-bg)', quote_sent:'rgba(168,85,247,0.1)', closed:'rgba(22,163,74,0.12)', other:'var(--bg3)' }
 
@@ -225,7 +223,7 @@ export default function LeadDetail() {
       notes: callForm.notes, next_follow_up_date: callForm.next_follow_up_date || null,
       next_action: callForm.next_action || null, transcript: transcript || null, called_at: calledAt,
     })
-    const statusMap = { interested:'interested', future_interested:'future_interested', callback:'called', not_interested:'dead', no_answer:'called', missed:'missed', demo_requested:'demo_sent', quote_sent:'quote_sent', closed:'closed' }
+    const statusMap = STATUS_MAP_IMPORTED
     const isCallback = callForm.outcome === 'callback'
     const callbackAt = isCallback && callForm.next_follow_up_date
       ? `${callForm.next_follow_up_date}T${callForm.callback_time || '10:00'}:00+05:30`
@@ -504,7 +502,7 @@ export default function LeadDetail() {
       </div>
 
       {/* ── NEXT STEP SUGGESTION ── */}
-      {nextSuggestion && !['closed','dead'].includes(lead.status) && (
+      {nextSuggestion && !BUCKET_CLOSED.includes(lead.status) && (
         <div style={{ background:'var(--accent-glow)', border:'1px solid rgba(91,82,245,0.2)', borderRadius:'var(--radius)', padding:'14px 16px', marginBottom:12, display:'flex', alignItems:'flex-start', gap:12 }}>
           <div style={{ fontSize:22, flexShrink:0 }}>{nextSuggestion.emoji}</div>
           <div style={{ flex:1 }}>
@@ -683,7 +681,7 @@ export default function LeadDetail() {
                   <div style={{ fontSize:13, fontWeight:700, color: lead.status==='closed'?'var(--green)':lead.status==='dead'?'var(--red)':'var(--text)' }}>
                     {lead.status==='closed'?'🎉 Deal Closed!':lead.status==='dead'?'❌ Not Interested':lead.status==='future_interested'?'🔮 Interested in Future':lead.status==='missed'?'📵 Call Missed':`Current: ${lead.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}`}
                   </div>
-                  {lead.next_follow_up_date && !['closed','dead'].includes(lead.status) && <div style={{ fontSize:12, color:'var(--yellow)', marginTop:2 }}>📅 Next: {format(parseISO(lead.next_follow_up_date), 'dd MMM yyyy')}</div>}
+                  {lead.next_follow_up_date && !BUCKET_CLOSED.includes(lead.status) && <div style={{ fontSize:12, color:'var(--yellow)', marginTop:2 }}>📅 Next: {format(parseISO(lead.next_follow_up_date), 'dd MMM yyyy')}</div>}
                 </div>
               </div>
             </div>

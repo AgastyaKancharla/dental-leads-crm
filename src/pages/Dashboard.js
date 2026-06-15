@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { Phone, MessageCircle, ChevronRight, RefreshCw } from 'lucide-react'
 import { isToday, isPast, parseISO, differenceInDays, isThisWeek, format } from 'date-fns'
 
-const STATUS_EMOJI = { new:'🆕', called:'📞', interested:'😊', future_interested:'🔮', demo_sent:'🖥️', quote_sent:'💰', negotiating:'🤝', closed:'✅', dead:'❌', missed:'📵' }
+import { STATUS_EMOJI } from '../lib/statuses'
 
 function getGreeting() {
   const h = new Date().getHours()

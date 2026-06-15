@@ -7,7 +7,7 @@ import { Search, MessageCircle, X, Users, Plus, Phone, CheckSquare, Square, Bell
 import { format, parseISO, differenceInDays, isToday, isPast } from 'date-fns'
 import { generateLeadIntelligence } from '../lib/intelligence'
 
-const STATUSES = ['', 'new', 'called', 'interested', 'future_interested', 'demo_sent', 'quote_sent', 'negotiating', 'renovation', 'gatekeeper', 'closed', 'dead', 'missed', 'not_reachable']
+import { STATUSES, STATUS_MAP as STATUS_MAP_LIB, BUCKET_HOT, BUCKET_PARKED, BUCKET_CLOSED, STATUS_EMOJI } from '../lib/statuses'
 const PRIORITIES = ['', 'high', 'medium', 'low']
 const AREAS = ['', 'Koramangala', 'Indiranagar', 'Whitefield', 'HSR Layout', 'JP Nagar', 'Jayanagar', 'BTM Layout', 'Electronic City', 'Marathahalli', 'Bannerghatta Road', 'Yelahanka', 'Hebbal', 'Rajajinagar', 'Malleshwaram', 'RT Nagar', 'Other']
 const EMPTY_LEAD = { clinic_name: '', doctor_name: '', phone: '', area: '', rating: '', status: 'new', priority: 'medium', notes: '', next_follow_up_date: '', next_action: '', email: '', best_time_to_call: '', tags: '' }
@@ -34,7 +34,7 @@ const OC_STYLE = {
 }
 
 // Status → auto-update map (same as LeadDetail)
-const STATUS_MAP = { interested:'interested', future_interested:'future_interested', callback:'called', not_interested:'dead', no_answer:'called', missed:'missed', demo_requested:'demo_sent', quote_sent:'quote_sent', closed:'closed' }
+const STATUS_MAP = STATUS_MAP_LIB
 const AUTO_FOLLOW = { interested:1, callback:2, demo_requested:1, no_answer:1, future_interested:30, missed:1 }
 const AUTO_ACTION = { interested:'send_demo', callback:'call', demo_requested:'send_demo', no_answer:'call', future_interested:'call', missed:'call' }
 
@@ -45,7 +45,7 @@ function bucketLeads(leads) {
 
   for (const l of leads) {
     const status = l.status
-    if (['closed', 'dead'].includes(status)) { rest.push(l); continue }
+    if (BUCKET_CLOSED.includes(status)) { rest.push(l); continue }
 
     const followDate = l.next_follow_up_date ? parseISO(l.next_follow_up_date) : null
     const overdue = followDate && isPast(followDate) && !isToday(followDate)
@@ -53,8 +53,8 @@ function bucketLeads(leads) {
 
     if (overdue) { urgent.push(l); continue }
     if (dueToday) { followToday.push(l); continue }
-    if (['interested', 'negotiating', 'quote_sent', 'demo_sent'].includes(status)) { hot.push(l); continue }
-    if (['future_interested', 'renovation', 'gatekeeper', 'out_of_city', 'partner_approval'].includes(status)) { parked.push(l); continue }
+    if (BUCKET_HOT.includes(status)) { hot.push(l); continue }
+    if (BUCKET_PARKED.includes(status)) { parked.push(l); continue }
     rest.push(l)
   }
 
@@ -572,7 +572,7 @@ export default function Leads() {
     )
   }
 
-  const totalActive = filtered.filter(l => !['closed', 'dead'].includes(l.status)).length
+  const totalActive = filtered.filter(l => !BUCKET_CLOSED.includes(l.status)).length
 
   return (
     <div>
@@ -652,9 +652,9 @@ export default function Leads() {
           {renderSection('rest', '🆕', 'New & Active', 'var(--accent)', true)}
           {renderSection('parked', '🔮', 'Parked', '#60a5fa', false)}
           {/* Closed/dead — always collapsed */}
-          {buckets.rest.filter(l => ['closed', 'dead'].includes(l.status)).length > 0 && (
-            <Section emoji="📁" title="Closed & Dead" count={buckets.rest.filter(l => ['closed', 'dead'].includes(l.status)).length} color="var(--text3)" defaultOpen={false}>
-              {buckets.rest.filter(l => ['closed', 'dead'].includes(l.status)).map(lead => (
+          {buckets.rest.filter(l => BUCKET_CLOSED.includes(l.status)).length > 0 && (
+            <Section emoji="📁" title="Closed & Dead" count={buckets.rest.filter(l => BUCKET_CLOSED.includes(l.status)).length} color="var(--text3)" defaultOpen={false}>
+              {buckets.rest.filter(l => BUCKET_CLOSED.includes(l.status)).map(lead => (
                 <LeadCard key={lead.id} lead={lead} onQuickLog={setQuickLogLead} onClick={() => navigateToLead(lead.id)} onCallback={setCallbackTarget} />
               ))}
             </Section>

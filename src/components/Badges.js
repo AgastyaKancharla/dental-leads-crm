@@ -1,16 +1,7 @@
 /* eslint-disable */
 import React from 'react'
+import { STATUS_LABELS, STATUS_BADGE } from '../lib/statuses'
 
-const STATUS_LABELS = {
-  new:'New', called:'Called', interested:'Interested',
-  future_interested:'Future Interest', demo_sent:'Demo Sent',
-  quote_sent:'Quote Sent', negotiating:'Negotiating', renovation:'🏗️ Renovation', gatekeeper:'🚧 Gatekeeper',
-  closed:'Closed', dead:'Not Interested', missed:'Missed',
-  not_reachable:'Not Reachable',
-  renovation:'Renovating', gatekeeper:'Gatekeeper',
-  out_of_city:'Out of City',
-  partner_approval:'Partner Approval',
-}
 const OUTCOME_LABELS = {
   interested:'Interested', callback:'Callback', not_interested:'Not Interested',
   no_answer:'No Answer', not_reachable:'Not Reachable', demo_requested:'Demo Requested',
@@ -18,18 +9,23 @@ const OUTCOME_LABELS = {
   quote_sent:'Quote Sent', other:'Other',
 }
 
+const OUTCOME_BADGE = {
+  interested:'badge-interested', callback:'badge-called',
+  not_interested:'badge-dead', no_answer:'badge-called',
+  not_reachable:'badge-missed',
+  renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
+  out_of_city:'badge-future',
+  partner_approval:'badge-called', demo_requested:'badge-demo_sent',
+  closed:'badge-closed', missed:'badge-missed',
+  future_interested:'badge-future', quote_sent:'badge-quote', other:'badge-new',
+}
+
 export function StatusBadge({ status }) {
-  const c = {
-    new:'badge-new', called:'badge-called', interested:'badge-interested',
-    future_interested:'badge-future', demo_sent:'badge-demo_sent',
-    quote_sent:'badge-quote', negotiating:'badge-negotiating',
-    closed:'badge-closed', dead:'badge-dead', missed:'badge-missed',
-    not_reachable:'badge-missed',
-    renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
-    out_of_city:'badge-future',
-    partner_approval:'badge-called', renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
-  }
-  return <span className={`badge ${c[status]||'badge-new'}`}>{STATUS_LABELS[status]||status}</span>
+  return (
+    <span className={`badge ${STATUS_BADGE[status] || 'badge-new'}`}>
+      {STATUS_LABELS[status] || status}
+    </span>
+  )
 }
 
 export function PriorityBadge({ priority }) {
@@ -37,15 +33,9 @@ export function PriorityBadge({ priority }) {
 }
 
 export function OutcomeBadge({ outcome }) {
-  const c = {
-    interested:'badge-interested', callback:'badge-called',
-    not_interested:'badge-dead', no_answer:'badge-called',
-    not_reachable:'badge-missed',
-    renovation:'badge-renovation', gatekeeper:'badge-gatekeeper',
-    out_of_city:'badge-future',
-    partner_approval:'badge-called', demo_requested:'badge-demo_sent',
-    closed:'badge-closed', missed:'badge-missed',
-    future_interested:'badge-future', quote_sent:'badge-quote', other:'badge-new',
-  }
-  return <span className={`badge ${c[outcome]||'badge-new'}`}>{OUTCOME_LABELS[outcome]||outcome}</span>
+  return (
+    <span className={`badge ${OUTCOME_BADGE[outcome] || 'badge-new'}`}>
+      {OUTCOME_LABELS[outcome] || outcome}
+    </span>
+  )
 }
