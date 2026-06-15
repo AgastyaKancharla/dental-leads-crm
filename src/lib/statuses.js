@@ -57,7 +57,37 @@ export const BUCKET_PARKED  = STATUS_CONFIG.filter(s => s.bucket === 'parked').m
 export const BUCKET_CLOSED  = STATUS_CONFIG.filter(s => s.bucket === 'closed').map(s => s.key)
 export const BUCKET_ACTIVE  = STATUS_CONFIG.filter(s => s.bucket === 'active').map(s => s.key)
 
-// Outcome → status mapping (used after logging a call)
+// Outcome → next action suggestion (used in lead cards and detail page)
+export const NEXT_ACTION_MAP = {
+  interested:        { label:'Send Demo',          emoji:'🖥️', tip:'They showed interest — send the demo link now while its fresh.',          action:'send_demo' },
+  future_interested: { label:'Schedule Follow Up', emoji:'🔮', tip:'Interested but not now — set a follow-up reminder for 30-60 days later.', action:'call'      },
+  callback:          { label:'Call Back',           emoji:'📞', tip:'They asked you to call back — call exactly on the scheduled date/time.',  action:'call'      },
+  not_interested:    { label:'Mark Dead',           emoji:'❌', tip:'Not interested — move on. Try again in 3 months.',                       action:null        },
+  no_answer:         { label:'Try Again',           emoji:'📵', tip:'No answer — try again tomorrow at a different time of day.',              action:'call'      },
+  missed:            { label:'Reschedule',          emoji:'📵', tip:'Call was missed — reschedule and mark in the system.',                   action:'call'      },
+  demo_requested:    { label:'Send Demo Now',       emoji:'🖥️', tip:'They asked for a demo — send it immediately!',                           action:'send_demo' },
+  quote_sent:        { label:'Follow Up on Quote',  emoji:'💰', tip:'Quote is sent — follow up in 2-3 days to check if they reviewed it.',   action:'call'      },
+  closed:            { label:'Won! 🎉',             emoji:'✅', tip:'Deal closed — collect payment and start onboarding.',                     action:null        },
+  other:             { label:'Follow Up',           emoji:'📞', tip:'Follow up to clarify the next step.',                                    action:'call'      },
+}
+
+// Status → default next action label (shown on card when no call outcome exists yet)
+export const STATUS_NEXT_ACTION = {
+  new:               { label:'Make first call',    emoji:'📞' },
+  called:            { label:'Follow up call',     emoji:'📞' },
+  interested:        { label:'Send demo',          emoji:'🖥️' },
+  demo_sent:         { label:'Follow up on demo',  emoji:'📞' },
+  quote_sent:        { label:'Follow up on quote', emoji:'💰' },
+  negotiating:       { label:'Close the deal',     emoji:'🤝' },
+  future_interested: { label:'Schedule check-in',  emoji:'🔮' },
+  gatekeeper:        { label:'Reach the doctor',   emoji:'🚧' },
+  renovation:        { label:'Check back later',   emoji:'🏗️' },
+  out_of_city:       { label:'Call when back',     emoji:'✈️' },
+  partner_approval:  { label:'Follow up approval', emoji:'🤝' },
+  no_budget:         { label:'Re-engage later',    emoji:'💸' },
+  missed:            { label:'Reschedule call',    emoji:'📵' },
+  not_reachable:     { label:'Try again',          emoji:'📵' },
+}
 export const STATUS_MAP = {
   interested:       'interested',
   future_interested:'future_interested',

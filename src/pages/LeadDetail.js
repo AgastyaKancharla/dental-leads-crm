@@ -8,7 +8,7 @@ import LeadIntelligence from '../components/LeadIntelligence'
 import { Phone, MessageCircle, ArrowLeft, Plus, X, Mic, FileText, Bell, Star, Upload, ChevronDown, ChevronUp, Trash2, Edit2, ExternalLink, Copy, AlertTriangle, PhoneMissed, RefreshCw, StickyNote, Calendar } from 'lucide-react'
 import { format, parseISO, formatDistanceToNow } from 'date-fns'
 
-import { STATUS_KEYS as STATUSES, STATUS_EMOJI, STATUS_MAP as STATUS_MAP_IMPORTED, BUCKET_CLOSED } from '../lib/statuses'
+import { STATUS_KEYS as STATUSES, STATUS_EMOJI, STATUS_MAP as STATUS_MAP_IMPORTED, BUCKET_CLOSED, NEXT_ACTION_MAP } from '../lib/statuses'
 
 const OUTCOME_EMOJI = { interested:'😊', future_interested:'🔮', callback:'📞', not_interested:'❌', no_answer:'📵', missed:'📵', demo_requested:'🖥️', quote_sent:'💰', closed:'✅', other:'💬' }
 const OUTCOME_COLOR = { interested:'var(--green-bg)', future_interested:'rgba(14,165,233,0.1)', callback:'var(--yellow-bg)', not_interested:'var(--red-bg)', no_answer:'var(--bg3)', missed:'var(--red-bg)', demo_requested:'var(--purple-bg)', quote_sent:'rgba(168,85,247,0.1)', closed:'rgba(22,163,74,0.12)', other:'var(--bg3)' }
@@ -23,18 +23,6 @@ const STAGE_FLOW = [
   { key:'closed',           label:'Closed',     emoji:'✅' },
 ]
 
-const NEXT_ACTION_MAP = {
-  interested:        { label:'Send Demo',       emoji:'🖥️', tip:'They showed interest — send the demo link now while its fresh.', action:'send_demo' },
-  future_interested: { label:'Schedule Follow Up',emoji:'🔮', tip:'Interested but not now — set a follow-up reminder for 30-60 days later.', action:'call' },
-  callback:          { label:'Call Back',        emoji:'📞', tip:'They asked you to call back — call exactly on the scheduled date/time.', action:'call' },
-  not_interested:    { label:'Mark Dead',        emoji:'❌', tip:'Not interested — move on. Try again in 3 months.', action:null },
-  no_answer:         { label:'Try Again',        emoji:'📵', tip:'No answer — try again tomorrow at a different time of day.', action:'call' },
-  missed:            { label:'Reschedule',       emoji:'📵', tip:'Call was missed — reschedule and mark in the system.', action:'call' },
-  demo_requested:    { label:'Send Demo Now',    emoji:'🖥️', tip:'They asked for a demo — send it immediately!', action:'send_demo' },
-  quote_sent:        { label:'Follow Up on Quote',emoji:'💰', tip:'Quote is sent — follow up in 2-3 days to check if they reviewed it.', action:'call' },
-  closed:            { label:'Won! 🎉',           emoji:'✅', tip:'Deal closed — collect payment and start onboarding.', action:null },
-  other:             { label:'Follow Up',        emoji:'📞', tip:'Follow up to clarify the next step.', action:'call' },
-}
 
 const NOTE_TYPE_LABELS = { note:'📝 Note', callback:'📞 Callback', missed_call:'📵 Missed Call', quote:'💰 Quote', whatsapp:'💬 WhatsApp', meeting:'🤝 Meeting' }
 

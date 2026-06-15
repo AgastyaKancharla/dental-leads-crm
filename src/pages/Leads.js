@@ -7,7 +7,7 @@ import { Search, MessageCircle, X, Users, Plus, Phone, CheckSquare, Square, Bell
 import { format, parseISO, differenceInDays, isToday, isPast } from 'date-fns'
 import { generateLeadIntelligence } from '../lib/intelligence'
 
-import { STATUSES, STATUS_MAP as STATUS_MAP_LIB, BUCKET_HOT, BUCKET_PARKED, BUCKET_CLOSED, STATUS_EMOJI } from '../lib/statuses'
+import { STATUSES, STATUS_MAP as STATUS_MAP_LIB, BUCKET_HOT, BUCKET_PARKED, BUCKET_CLOSED, STATUS_EMOJI, NEXT_ACTION_MAP, STATUS_NEXT_ACTION } from '../lib/statuses'
 const PRIORITIES = ['', 'high', 'medium', 'low']
 const AREAS = ['', 'Koramangala', 'Indiranagar', 'Whitefield', 'HSR Layout', 'JP Nagar', 'Jayanagar', 'BTM Layout', 'Electronic City', 'Marathahalli', 'Bannerghatta Road', 'Yelahanka', 'Hebbal', 'Rajajinagar', 'Malleshwaram', 'RT Nagar', 'Other']
 const EMPTY_LEAD = { clinic_name: '', doctor_name: '', phone: '', area: '', rating: '', status: 'new', priority: 'medium', notes: '', next_follow_up_date: '', next_action: '', email: '', best_time_to_call: '', tags: '' }
@@ -183,6 +183,11 @@ function LeadCard({ lead, onQuickLog, onClick, onCallback }) {
   const callbackPast = hasCallback && isPast(new Date(lead.callback_scheduled_at))
   const contextNote = lead.last_call_notes || lead.notes || null
 
+  // Next action: prefer saved next_action field, fall back to status default
+  const nextAction = (!BUCKET_CLOSED.includes(lead.status))
+    ? STATUS_NEXT_ACTION[lead.status]
+    : null
+
   return (
     <div
       onClick={onClick}
@@ -255,6 +260,23 @@ function LeadCard({ lead, onQuickLog, onClick, onCallback }) {
           overflow: 'hidden',
         }}>
           💬 {contextNote}
+        </div>
+      )}
+
+      {/* ROW 3b: next action pill */}
+      {nextAction && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          background: 'rgba(124,106,247,0.10)',
+          border: '1px solid rgba(124,106,247,0.22)',
+          borderRadius: 99,
+          padding: '4px 10px',
+          marginBottom: 8,
+          fontSize: 11, fontWeight: 700,
+          color: 'var(--accent)',
+        }}>
+          <span>{nextAction.emoji}</span>
+          <span>Next: {nextAction.label}</span>
         </div>
       )}
 
