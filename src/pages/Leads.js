@@ -82,26 +82,38 @@ function QuickLogModal({ lead, onSave, onClose }) {
   async function save() {
     if (!outcome) { window.__toast && window.__toast('Pick an outcome', 'error'); return }
     setSaving(true)
-    const calledAt = new Date().toISOString()
-    await supabase.from('call_logs').insert({
-      lead_id: lead.id, outcome,
-      notes: notes || null,
-      next_follow_up_date: followDate || null,
-      next_action: AUTO_ACTION[outcome] || null,
-      called_at: calledAt,
-    })
-    await supabase.from('leads').update({
-      status: STATUS_MAP[outcome] || lead.status,
-      next_follow_up_date: followDate || null,
-      next_action: AUTO_ACTION[outcome] || null,
-      last_call_notes: notes || null,
-      last_called_at: calledAt,
-      call_count: (lead.call_count || 0) + 1,
-    }).eq('id', lead.id)
-    setSaving(false)
-    window.__toast && window.__toast('Call logged!', 'success')
-    onSave()
-    onClose()
+    try {
+      const calledAt = new Date().toISOString()
+      const { error: logErr } = await supabase.from('call_logs').insert({
+        lead_id: lead.id,
+        outcome,
+        notes: notes || null,
+        next_follow_up_date: followDate || null,
+        called_at: calledAt,
+      })
+      if (logErr) throw new Error('call_logs: ' + logErr.message)
+
+      const leadUpdate = {
+        status: STATUS_MAP[outcome] || lead.status,
+        next_follow_up_date: followDate || null,
+        last_called_at: calledAt,
+        call_count: (lead.call_count || 0) + 1,
+      }
+      if (notes) leadUpdate.last_call_notes = notes
+      if (AUTO_ACTION[outcome]) leadUpdate.next_action = AUTO_ACTION[outcome]
+
+      const { error: leadErr } = await supabase.from('leads').update(leadUpdate).eq('id', lead.id)
+      if (leadErr) throw new Error('leads: ' + leadErr.message)
+
+      window.__toast && window.__toast('Call logged!', 'success')
+      onSave()
+      onClose()
+    } catch (err) {
+      console.error('Quick log error:', err)
+      window.__toast && window.__toast('Failed: ' + (err?.message || 'Unknown error'), 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const oc = OC_STYLE[outcome]
