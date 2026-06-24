@@ -61,119 +61,178 @@ function bucketLeads(leads) {
   return { urgent, followToday, hot, parked, rest }
 }
 
-// ── QUICK LOG MODAL ──
+// ── OUTCOME RULES (same as LeadDetail) ──
+const OUTCOME_RULES = {
+  no_answer:        { status: 'not_reachable',     next_action: 'call',      days: 1,   label: 'No Answer' },
+  switched_off:     { status: 'not_reachable',     next_action: 'call',      days: 1,   label: 'Switched Off' },
+  wrong_number:     { status: 'wrong_number',      next_action: null,        days: null, label: 'Wrong Number' },
+  voicemail:        { status: 'not_reachable',     next_action: 'call',      days: 1,   label: 'Voicemail' },
+  dr_busy:          { status: 'gatekeeper',        next_action: 'call',      days: 1,   label: 'Dr Busy' },
+  dr_not_well:      { status: 'gatekeeper',        next_action: 'call',      days: 2,   label: 'Dr Not Well' },
+  gatekeeper_block: { status: 'gatekeeper',        next_action: 'call',      days: 2,   label: 'Gatekeeper Blocking' },
+  not_interested:   { status: 'dead',              next_action: null,        days: null, label: 'Not Interested' },
+  happy_current:    { status: 'future_interested', next_action: 'call',      days: 90,  label: 'Happy with Current' },
+  silent_audit:     { status: 'called',            next_action: 'whatsapp',  days: 1,   label: 'Silent — Send Audit' },
+  renovation:       { status: 'renovation',        next_action: 'call',      days: 30,  label: 'Renovation' },
+  relocation:       { status: 'out_of_city',       next_action: 'call',      days: 21,  label: 'Relocating' },
+  partner_approval: { status: 'partner_approval',  next_action: 'call',      days: 5,   label: 'Partner Approval' },
+  dr_occupied:      { status: 'gatekeeper',        next_action: 'call',      days: 3,   label: 'Dr Occupied' },
+  future_interest:  { status: 'future_interested', next_action: 'call',      days: 60,  label: 'Future Interest' },
+  wants_audit:      { status: 'called',            next_action: 'whatsapp',  days: 1,   label: 'Wants Audit' },
+  wants_demo:       { status: 'demo_sent',         next_action: 'follow_up', days: 2,   label: 'Wants Demo' },
+  wants_quote:      { status: 'quote_sent',        next_action: 'follow_up', days: 1,   label: 'Wants Quote' },
+  meeting_fixed:    { status: 'negotiating',       next_action: 'meeting',   days: 1,   label: 'Meeting Fixed' },
+  paid_advance:     { status: 'closed',            next_action: null,        days: null, label: 'Paid Advance' },
+}
+
+function addDaysLocal(date, days) {
+  const d = new Date(date); d.setDate(d.getDate() + days); return d
+}
+
+// ── QUICK LOG MODAL (3-step, thumb-friendly) ──
 function QuickLogModal({ lead, onSave, onClose }) {
-  const [outcome, setOutcome] = useState('')
-  const [notes, setNotes] = useState('')
-  const [followDate, setFollowDate] = useState('')
+  const [step, setStep] = useState(1)
+  const [happened, setHappened] = useState(null)
+  const [outcome, setOutcome] = useState(null)
+  const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function pickOutcome(o) {
-    setOutcome(o)
-    const days = AUTO_FOLLOW[o]
-    if (days) {
-      const d = new Date(); d.setDate(d.getDate() + days)
-      setFollowDate(d.toISOString().split('T')[0])
-    } else {
-      setFollowDate('')
-    }
-  }
+  const BIG_BTN = ({ onClick, selected, emoji, label, sub, color }) => (
+    <button onClick={onClick} style={{
+      width: '100%', padding: '14px 16px', borderRadius: 12,
+      border: `2px solid ${selected ? color : 'var(--border)'}`,
+      background: selected ? `${color}18` : 'var(--bg3)',
+      color: selected ? color : 'var(--text)',
+      fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left',
+      display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8,
+    }}>
+      <span style={{ fontSize: 20 }}>{emoji}</span>
+      <div style={{ flex: 1 }}>
+        <div>{label}</div>
+        {sub && <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>{sub}</div>}
+      </div>
+      {selected && <span style={{ color }}>✓</span>}
+    </button>
+  )
 
   async function save() {
-    if (!outcome) { window.__toast && window.__toast('Pick an outcome', 'error'); return }
+    if (!outcome) return
+    const rule = OUTCOME_RULES[outcome]
+    if (!rule) return
     setSaving(true)
-    try {
-      const calledAt = new Date().toISOString()
-      const { error: logErr } = await supabase.from('call_logs').insert({
-        lead_id: lead.id,
-        outcome,
-        notes: notes || null,
-        next_follow_up_date: followDate || null,
-        called_at: calledAt,
-      })
-      if (logErr) throw new Error('call_logs: ' + logErr.message)
-
-      const leadUpdate = {
-        status: STATUS_MAP[outcome] || lead.status,
-        next_follow_up_date: followDate || null,
-        last_called_at: calledAt,
-        call_count: (lead.call_count || 0) + 1,
-      }
-      if (notes) leadUpdate.last_call_notes = notes
-      if (AUTO_ACTION[outcome]) leadUpdate.next_action = AUTO_ACTION[outcome]
-
-      const { error: leadErr } = await supabase.from('leads').update(leadUpdate).eq('id', lead.id)
-      if (leadErr) throw new Error('leads: ' + leadErr.message)
-
-      window.__toast && window.__toast('Call logged!', 'success')
-      onSave()
-      onClose()
-    } catch (err) {
-      console.error('Quick log error:', err)
-      window.__toast && window.__toast('Failed: ' + (err?.message || 'Unknown error'), 'error')
-    } finally {
-      setSaving(false)
-    }
+    const now = new Date().toISOString()
+    const followUpDate = rule.days ? addDaysLocal(new Date(), rule.days).toISOString().split('T')[0] : null
+    await supabase.from('call_logs').insert({ lead_id: lead.id, outcome, notes: note || rule.label, called_at: now })
+    await supabase.from('lead_notes').insert({ lead_id: lead.id, note: `📞 ${rule.label}${note ? ' — ' + note : ''}`, type: 'call' })
+    await supabase.from('leads').update({
+      status: rule.status, last_called_at: now,
+      call_count: (lead.call_count || 0) + 1,
+      next_action: rule.next_action,
+      next_follow_up_date: followUpDate,
+      last_call_notes: note || rule.label,
+    }).eq('id', lead.id)
+    setSaving(false)
+    window.__toast && window.__toast('Call logged ✅', 'success')
+    onSave(); onClose()
   }
 
-  const oc = OC_STYLE[outcome]
+  const rule = outcome ? OUTCOME_RULES[outcome] : null
+  const autoFollowDate = rule?.days ? addDaysLocal(new Date(), rule.days) : null
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
+      <div className="modal" style={{ maxWidth: 460, borderRadius: 20 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Log Call</div>
-            <h2 style={{ fontSize: 16 }}>{lead.clinic_name}</h2>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Log Call</div>
+            <h2 style={{ fontSize: 15, margin: 0 }}>{lead.clinic_name}</h2>
           </div>
-          <button className="btn-icon" onClick={onClose} style={{ fontSize: 18 }}>×</button>
+          <button className="btn-icon" onClick={onClose} style={{ fontSize: 20 }}>×</button>
         </div>
-        <div className="modal-body" style={{ paddingTop: 16 }}>
-          {/* Outcome grid */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>What happened?</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7, marginBottom: 18 }}>
-            {OUTCOMES.map(o => {
-              const s = OC_STYLE[o] || { bg: 'var(--bg3)', color: 'var(--text2)', border: 'var(--border)' }
-              const isSelected = outcome === o
-              return (
-                <button key={o} onClick={() => pickOutcome(o)} style={{
-                  padding: '9px 6px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: isSelected ? s.bg : 'var(--bg3)',
-                  color: isSelected ? s.color : 'var(--text3)',
-                  border: `1.5px solid ${isSelected ? s.border : 'var(--border)'}`,
-                  fontSize: 12, fontWeight: isSelected ? 700 : 500,
-                  cursor: 'pointer', textAlign: 'center',
-                  transition: 'all 0.15s',
-                  transform: isSelected ? 'scale(1.03)' : 'scale(1)',
-                }}>
-                  <div style={{ fontSize: 16, marginBottom: 3 }}>{OUTCOME_EMOJI[o]}</div>
-                  {OUTCOME_LABEL[o]}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Notes */}
-          <div className="form-group" style={{ marginBottom: 14 }}>
-            <label className="form-label">Quick note (optional)</label>
-            <textarea className="form-input" placeholder="What did they say?" value={notes} onChange={e => setNotes(e.target.value)} style={{ minHeight: 72 }} />
-          </div>
-
-          {/* Follow up date */}
-          {outcome && (
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">📅 Follow up date</label>
-              <input type="date" className="form-input" min={today} value={followDate} onChange={e => setFollowDate(e.target.value)} />
+        <div className="modal-body">
+          {step === 1 && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 12, textTransform: 'uppercase' }}>What happened?</div>
+              <BIG_BTN emoji="📵" label="Not Connected" sub="No answer, switched off, wrong number" color="#f87171" selected={happened === 'not_connected'} onClick={() => setHappened('not_connected')} />
+              <BIG_BTN emoji="🚧" label="Reached Receptionist" sub="Doctor blocked or unavailable" color="#fb923c" selected={happened === 'receptionist'} onClick={() => setHappened('receptionist')} />
+              <BIG_BTN emoji="📞" label="Reached Doctor" sub="Spoke with decision maker" color="#34d399" selected={happened === 'doctor'} onClick={() => setHappened('doctor')} />
+              {happened && <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }} onClick={() => setStep(2)}>Next →</button>}
             </div>
           )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving || !outcome}
-            style={{ background: oc ? oc.border : undefined, boxShadow: oc ? `0 2px 12px ${oc.bg}` : undefined }}>
-            {saving ? 'Saving...' : 'Save Call'}
-          </button>
+          {step === 2 && happened === 'not_connected' && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 12, textTransform: 'uppercase' }}>Why not connected?</div>
+              <BIG_BTN emoji="🔇" label="No Answer" color="#9ca3af" selected={outcome === 'no_answer'} onClick={() => setOutcome('no_answer')} />
+              <BIG_BTN emoji="📴" label="Switched Off" color="#9ca3af" selected={outcome === 'switched_off'} onClick={() => setOutcome('switched_off')} />
+              <BIG_BTN emoji="❓" label="Wrong Number" color="#f87171" selected={outcome === 'wrong_number'} onClick={() => setOutcome('wrong_number')} />
+              <BIG_BTN emoji="📬" label="Voicemail" color="#9ca3af" selected={outcome === 'voicemail'} onClick={() => setOutcome('voicemail')} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setStep(1); setOutcome(null) }}>Back</button>
+                {outcome && <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={() => setStep(3)}>Next →</button>}
+              </div>
+            </div>
+          )}
+          {step === 2 && happened === 'receptionist' && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 12, textTransform: 'uppercase' }}>What did receptionist say?</div>
+              <BIG_BTN emoji="⏰" label="Doctor is Busy" sub="Call back later" color="#fb923c" selected={outcome === 'dr_busy'} onClick={() => setOutcome('dr_busy')} />
+              <BIG_BTN emoji="🤒" label="Doctor is Unwell" color="#fb923c" selected={outcome === 'dr_not_well'} onClick={() => setOutcome('dr_not_well')} />
+              <BIG_BTN emoji="🚫" label="Can't Reach Doctor" sub="Always blocking" color="#f87171" selected={outcome === 'gatekeeper_block'} onClick={() => setOutcome('gatekeeper_block')} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setStep(1); setOutcome(null) }}>Back</button>
+                {outcome && <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={() => setStep(3)}>Next →</button>}
+              </div>
+            </div>
+          )}
+          {step === 2 && happened === 'doctor' && (
+            <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 8, textTransform: 'uppercase' }}>How did it go?</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', marginBottom: 6, opacity: 0.7 }}>NOT MOVING FORWARD</div>
+              <BIG_BTN emoji="❌" label="Not Interested" sub="Hard no" color="#f87171" selected={outcome === 'not_interested'} onClick={() => setOutcome('not_interested')} />
+              <BIG_BTN emoji="😐" label="Silent — Sending Audit" sub="Will send audit on WhatsApp" color="#9ca3af" selected={outcome === 'silent_audit'} onClick={() => setOutcome('silent_audit')} />
+              <BIG_BTN emoji="✅" label="Happy with Current" sub="Not looking to change" color="#9ca3af" selected={outcome === 'happy_current'} onClick={() => setOutcome('happy_current')} />
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', margin: '12px 0 6px', opacity: 0.7 }}>INTERESTED BUT BLOCKED</div>
+              <BIG_BTN emoji="🏗️" label="Renovation" color="#fbbf24" selected={outcome === 'renovation'} onClick={() => setOutcome('renovation')} />
+              <BIG_BTN emoji="✈️" label="Relocating" color="#fbbf24" selected={outcome === 'relocation'} onClick={() => setOutcome('relocation')} />
+              <BIG_BTN emoji="🤝" label="Partner Approval" color="#fbbf24" selected={outcome === 'partner_approval'} onClick={() => setOutcome('partner_approval')} />
+              <BIG_BTN emoji="📅" label="Doctor Too Busy" color="#fbbf24" selected={outcome === 'dr_occupied'} onClick={() => setOutcome('dr_occupied')} />
+              <BIG_BTN emoji="🔮" label="Future Interest" sub="3–6 months" color="#fbbf24" selected={outcome === 'future_interest'} onClick={() => setOutcome('future_interest')} />
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', margin: '12px 0 6px', opacity: 0.7 }}>MOVING FORWARD</div>
+              <BIG_BTN emoji="📋" label="Wants Audit" sub="Send on WhatsApp" color="#34d399" selected={outcome === 'wants_audit'} onClick={() => setOutcome('wants_audit')} />
+              <BIG_BTN emoji="🖥️" label="Wants Demo" color="#34d399" selected={outcome === 'wants_demo'} onClick={() => setOutcome('wants_demo')} />
+              <BIG_BTN emoji="💰" label="Wants Quote" color="#34d399" selected={outcome === 'wants_quote'} onClick={() => setOutcome('wants_quote')} />
+              <BIG_BTN emoji="🤝" label="Meeting Fixed" color="#60a5fa" selected={outcome === 'meeting_fixed'} onClick={() => setOutcome('meeting_fixed')} />
+              <BIG_BTN emoji="🎉" label="Paid Advance" sub="Closed!" color="#a78bfa" selected={outcome === 'paid_advance'} onClick={() => setOutcome('paid_advance')} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 4, position: 'sticky', bottom: 0, background: 'var(--bg)', paddingTop: 8 }}>
+                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setStep(1); setOutcome(null) }}>Back</button>
+                {outcome && <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={() => setStep(3)}>Next →</button>}
+              </div>
+            </div>
+          )}
+          {step === 3 && rule && (
+            <div>
+              <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>Auto-set for you</div>
+                <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div><span style={{ color: 'var(--text3)' }}>Status: </span><strong>{rule.status?.replace(/_/g, ' ')}</strong></div>
+                  {rule.next_action && <div><span style={{ color: 'var(--text3)' }}>Next: </span><strong>{rule.next_action?.replace(/_/g, ' ')}</strong></div>}
+                  {autoFollowDate
+                    ? <div><span style={{ color: 'var(--text3)' }}>Follow up: </span><strong>{autoFollowDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></div>
+                    : <div style={{ color: 'var(--text3)' }}>No follow up needed</div>}
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Note (optional)</label>
+                <textarea className="form-input" placeholder="e.g. Dr said call after Diwali..." value={note} onChange={e => setNote(e.target.value)} rows={2} style={{ resize: 'none' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setStep(2)}>Back</button>
+                <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={save} disabled={saving}>
+                  {saving ? 'Saving...' : '✅ Done'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
