@@ -8,32 +8,26 @@ import { format, parseISO, formatDistanceToNow, addDays } from 'date-fns'
 // ─── AUTO FOLLOW-UP RULES ────────────────────────────────────────────────────
 // Given outcome + blocker → returns { status, next_action, follow_up_days, label }
 const OUTCOME_RULES = {
-  // Not connected
-  no_answer:        { status: 'not_reachable', next_action: 'call',      days: 1,  label: 'No Answer' },
-  switched_off:     { status: 'not_reachable', next_action: 'call',      days: 1,  label: 'Switched Off' },
-  wrong_number:     { status: 'wrong_number',  next_action: null,         days: null, label: 'Wrong Number' },
-  voicemail:        { status: 'not_reachable', next_action: 'call',      days: 1,  label: 'Voicemail' },
-  // Receptionist
-  dr_busy:          { status: 'gatekeeper',    next_action: 'call',      days: 1,  label: 'Dr Busy' },
-  dr_not_well:      { status: 'gatekeeper',    next_action: 'call',      days: 2,  label: 'Dr Not Well' },
-  gatekeeper_block: { status: 'gatekeeper',    next_action: 'call',      days: 2,  label: 'Gatekeeper Blocking' },
-  // Doctor — no
-  not_interested:   { status: 'dead',          next_action: null,         days: null, label: 'Not Interested' },
-  happy_current:    { status: 'future_interested', next_action: 'call',  days: 90, label: 'Happy with Current' },
-  // Doctor — soft maybe
-  silent_audit:     { status: 'called',        next_action: 'whatsapp',  days: 1,  label: 'Silent — Send Audit' },
-  // Doctor — interested with blocker
-  renovation:       { status: 'renovation',    next_action: 'call',      days: 30, label: 'Renovation' },
-  relocation:       { status: 'out_of_city',   next_action: 'call',      days: 21, label: 'Relocating' },
-  partner_approval: { status: 'partner_approval', next_action: 'call',   days: 5,  label: 'Partner Approval' },
-  dr_occupied:      { status: 'gatekeeper',    next_action: 'call',      days: 3,  label: 'Dr Occupied' },
-  future_interest:  { status: 'future_interested', next_action: 'call',  days: 60, label: 'Future Interest' },
-  // Doctor — moving forward
-  wants_audit:      { status: 'called',        next_action: 'whatsapp',  days: 1,  label: 'Wants Audit' },
-  wants_demo:       { status: 'demo_sent',     next_action: 'follow_up', days: 2,  label: 'Wants Demo' },
-  wants_quote:      { status: 'quote_sent',    next_action: 'follow_up', days: 1,  label: 'Wants Quote' },
-  meeting_fixed:    { status: 'negotiating',   next_action: 'meeting',   days: 1,  label: 'Meeting Fixed' },
-  paid_advance:     { status: 'closed',        next_action: null,         days: null, label: 'Paid Advance' },
+  no_answer:        { status: 'not_reachable',     next_action: 'call',      days: 1,   label: 'No Answer',           priority: null,     archive: false },
+  switched_off:     { status: 'not_reachable',     next_action: 'call',      days: 1,   label: 'Switched Off',        priority: null,     archive: false },
+  wrong_number:     { status: 'wrong_number',      next_action: null,        days: null, label: 'Wrong Number',        priority: null,     archive: true  },
+  voicemail:        { status: 'not_reachable',     next_action: 'call',      days: 1,   label: 'Voicemail',           priority: null,     archive: false },
+  dr_busy:          { status: 'gatekeeper',        next_action: 'call',      days: 1,   label: 'Dr Busy',             priority: null,     archive: false },
+  dr_not_well:      { status: 'gatekeeper',        next_action: 'call',      days: 2,   label: 'Dr Not Well',         priority: null,     archive: false },
+  gatekeeper_block: { status: 'gatekeeper',        next_action: 'call',      days: 2,   label: 'Gatekeeper Blocking', priority: null,     archive: false },
+  not_interested:   { status: 'dead',              next_action: null,        days: null, label: 'Not Interested',      priority: null,     archive: true  },
+  happy_current:    { status: 'future_interested', next_action: 'call',      days: 90,  label: 'Happy with Current',  priority: 'low',    archive: false },
+  silent_audit:     { status: 'called',            next_action: 'whatsapp',  days: 1,   label: 'Silent — Send Audit', priority: 'medium', archive: false },
+  renovation:       { status: 'renovation',        next_action: 'call',      days: 30,  label: 'Renovation',          priority: 'medium', archive: false },
+  relocation:       { status: 'out_of_city',       next_action: 'call',      days: 21,  label: 'Relocating',          priority: 'medium', archive: false },
+  partner_approval: { status: 'partner_approval',  next_action: 'call',      days: 5,   label: 'Partner Approval',    priority: 'medium', archive: false },
+  dr_occupied:      { status: 'gatekeeper',        next_action: 'call',      days: 3,   label: 'Dr Occupied',         priority: null,     archive: false },
+  future_interest:  { status: 'future_interested', next_action: 'call',      days: 60,  label: 'Future Interest',     priority: 'medium', archive: false },
+  wants_audit:      { status: 'called',            next_action: 'whatsapp',  days: 1,   label: 'Wants Audit',         priority: 'high',   archive: false },
+  wants_demo:       { status: 'demo_sent',         next_action: 'follow_up', days: 2,   label: 'Wants Demo',          priority: 'high',   archive: false },
+  wants_quote:      { status: 'quote_sent',        next_action: 'follow_up', days: 1,   label: 'Wants Quote',         priority: 'high',   archive: false },
+  meeting_fixed:    { status: 'negotiating',       next_action: 'meeting',   days: 1,   label: 'Meeting Fixed',       priority: 'high',   archive: false },
+  paid_advance:     { status: 'closed',            next_action: null,        days: null, label: 'Paid Advance',        priority: 'high',   archive: false },
 }
 
 // ─── CALL LOG MODAL (3-step, thumb friendly) ─────────────────────────────────
