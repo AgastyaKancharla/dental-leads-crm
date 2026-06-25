@@ -168,13 +168,13 @@ a { text-decoration: none; color: inherit; }
 
 .topbar {
   height: 58px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 18px;
-  background: rgba(17,19,24,0.85);
-  backdrop-filter: blur(12px);
+  background: #003566;
+  backdrop-filter: none;
   flex-shrink: 0;
   gap: 12px;
   position: sticky;
@@ -185,7 +185,7 @@ a { text-decoration: none; color: inherit; }
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
-  color: var(--text);
+  color: #ffffff;
   white-space: nowrap;
 }
 .topbar-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
