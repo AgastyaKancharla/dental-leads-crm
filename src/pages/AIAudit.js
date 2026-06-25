@@ -208,7 +208,7 @@ Be specific to dental clinics in Bengaluru. If no website, assume score 0 and fo
 
       setLatest(saved)
       setAudits(prev => [saved, ...prev])
-      window.__toast && window.__toast('AI Audit complete!', 'success')
+      window.__toast && window.__toast('Business Audit complete!', 'success')
     } catch (err) {
       console.error(err)
       window.__toast && window.__toast('Audit failed — try again', 'error')
@@ -250,7 +250,7 @@ Be specific to dental clinics in Bengaluru. If no website, assume score 0 and fo
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Zap size={16} color="var(--accent)" /> AI Audit — {lead.clinic_name}
+              <Zap size={16} color="var(--accent)" /> Business Audit — {lead.clinic_name}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
               Analyses website quality, SEO, business opportunities and generates a personalized sales pitch using AI.
@@ -292,7 +292,7 @@ Be specific to dental clinics in Bengaluru. If no website, assume score 0 and fo
           <Zap size={40} color="var(--accent)" style={{ margin: '0 auto 14px', opacity: 0.5 }} />
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No audit yet</div>
           <div style={{ color: 'var(--text3)', fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            Run an AI audit to get website score, SEO analysis,<br />business opportunities and a personalized sales pitch.
+            Run an Business audit to get website score, SEO analysis,<br />business opportunities and a personalized sales pitch.
           </div>
           <button className="btn btn-primary" onClick={runAudit} disabled={running}>
             <Zap size={14} /> Run First Audit
