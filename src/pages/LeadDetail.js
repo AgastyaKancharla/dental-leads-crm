@@ -96,7 +96,8 @@ function LogCallModal({ lead, onDone, onClose }) {
       next_follow_up_date: followUpDate,
       last_call_notes: note || rule.label,
     }
-    if (rule.status === 'wrong_number') update.next_action = null
+    if (rule.priority) update.priority = rule.priority
+    if (rule.archive) update.archived = true
     await supabase.from('leads').update(update).eq('id', lead.id)
 
     setSaving(false)
