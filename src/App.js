@@ -20,7 +20,7 @@ const NAV = [
   { path: '/leads',      label: 'All Leads',    icon: Users },
   { path: '/callqueue',  label: 'Call Queue',   icon: PhoneCall },
   { path: '/reminders',  label: "Today's Plan", icon: Bell },
-  { path: '/audit',      label: 'AI Audit',     icon: Zap },
+  { path: '/audit',      label: 'Business Audit',     icon: Zap },
   { path: '/whatsapp',   label: 'WA Templates', icon: MessageCircle },
   { path: '/scripts',    label: 'Call Scripts', icon: FileText },
   { path: '/analytics',  label: 'Analytics',    icon: BarChart2 },
