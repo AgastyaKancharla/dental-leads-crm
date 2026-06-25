@@ -219,14 +219,14 @@ a { text-decoration: none; color: inherit; }
   white-space: nowrap;
 }
 .btn-primary {
-  background: var(--accent);
-  color: white;
-  box-shadow: 0 2px 12px rgba(124,106,247,0.35);
+  background: #003566;
+  color: #ffffff;
+  box-shadow: 0 2px 12px rgba(0,53,102,0.25);
 }
 .btn-primary:hover {
-  background: var(--accent2);
+  background: #00254a;
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(124,106,247,0.45);
+  box-shadow: 0 4px 20px rgba(0,53,102,0.35);
 }
 .btn-primary:disabled { opacity: 0.5; transform: none; cursor: not-allowed; box-shadow: none; }
 .btn-ghost {
