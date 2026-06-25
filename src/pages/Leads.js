@@ -594,7 +594,7 @@ export default function Leads() {
 
   async function fetchLeads() {
     setLoading(true)
-    const { data } = await supabase.from('leads').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('leads').select('*').eq('archived', false).order('created_at', { ascending: false })
     setLeads(data || [])
     setLoading(false)
   }
